@@ -118,7 +118,7 @@ contract Resolver is Helper {
     }
 
     // CHECK9898 - Aave charges 0.000001% something fees. Keep that in mind at time of payback
-    function selectPayback(address[] memory tokens, uint[] memory amts, uint route) internal {
+    function selectPayback(address[] memory tokens, uint route) internal {
         if (route == 0) {
             return;
         } else if (route == 1) {
@@ -127,14 +127,14 @@ contract Resolver is Helper {
             spell(makerConnect, _dataOne);
             spell(makerConnect, _dataTwo);
         } else if (route == 2) {
-            for (uint i = 0; i < amts.length; i++) {
+            for (uint i = 0; i < tokens.length; i++) {
                 bytes memory _data = abi.encodeWithSignature("payback(address,uint256)", tokens[i], uint(-1));
                 spell(compoundConnect, _data);
             }
             bytes memory _dataOne = abi.encodeWithSignature("withdraw(address,uint256)", ethAddr, uint(-1));
             spell(compoundConnect, _dataOne);
         } else if (route == 3) {
-            for (uint i = 0; i < amts.length; i++) {
+            for (uint i = 0; i < tokens.length; i++) {
                 bytes memory _data = abi.encodeWithSignature("payback(address,uint256)", tokens[i], uint(-1));
                 spell(aaveConnect, _data);
             }
