@@ -168,7 +168,6 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
             (address, uint256, address[], uint256[], address[], bytes[])
         );
 
-        wethContract.approve(wethAddr, uint(-1)); // CHECK9898 - give allowance via construtor
         wethContract.withdraw(wethContract.balanceOf(this));
 
         selectBorrow(cd.tokens, cd.amounts, cd.route);
@@ -200,7 +199,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         for (uint i = 0; i < _length; i++) {
             _marketIds[i] = _getMarketIdFromTokenAddress(soloAddr, _token);
             _tokenContracts[i] = IERC20(_tokens[i]);
-            _tokenContracts[i].approve(soloAddr, _amounts[i] + 2); // TODO - set in constructor?
+            _tokenContracts[i].approve(soloAddr, _amounts[i] + 2); // TODO - give infinity allowance??
         }
 
         uint _opLength = _length * 2 + 1;
@@ -234,24 +233,22 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
 
     function routeProtocols(address[] memory _tokens, uint256[] memory _amounts, uint _route, bytes calldata data) internal {
         uint _length = _tokens.length;
-        uint256 marketId = 0; // CHECK9898 - set static market ID? => Changed to static ID
+        uint256 wethMarketId = 0;
 
-        IERC20 _tokenContract = IERC20(wethAddr);
-        uint _amount = _tokenContract.balanceOf(soloAddr); // CHECK9898 - does solo has all the ETH?
+        uint _amount = wethContract.balanceOf(soloAddr); // CHECK9898 - does solo has all the ETH?
         _amount = wdiv(_amount, 999000000000000000); // 99.9% weth borrow
-        _tokenContract.approve(soloAddr, _amount + 2);
+        wethContract.approve(soloAddr, _amount + 2);
 
         Actions.ActionArgs[] memory operations = new Actions.ActionArgs[](3);
 
-        operations[0] = _getWithdrawAction(marketId, _amount);
+        operations[0] = _getWithdrawAction(wethMarketId, _amount);
         operations[1] = _getCallAction(encodeDsaCastData(msg.sender, _route, _tokens, _amounts, data));
-        operations[2] = _getDepositAction(marketId, _amount + 2);
+        operations[2] = _getDepositAction(wethMarketId, _amount + 2);
 
         Account.Info[] memory accountInfos = new Account.Info[](1);
         accountInfos[0] = _getAccountInfo();
 
         uint[] iniBals = new uint(_length);
-        uint[] finBals = new uint(_length);
         IERC20[] _tokenContracts = new IERC20(_length);
         for (uint i = 0; i < _length; i++) {
             _tokenContracts[i] = IERC20(_tokens[i]);
@@ -261,8 +258,8 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         solo.operate(accountInfos, operations);
 
         for (uint i = 0; i < _length; i++) {
-            finBals[i] = add(_tokenContracts[i].balanceOf(address(this)), wmul(_amounts[i]), fee);
-            require(sub(iniBals[i], finBals[i]) < 5, "amount-paid-less");
+            uint finBal = add(_tokenContracts[i].balanceOf(address(this)), wmul(_amounts[i]), fee);
+            require(sub(iniBals[i], finBal) < 5, "amount-paid-less");
         }
     }
 
@@ -281,7 +278,13 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
 
 }
 
-// contract InstaDydxFlashLoan is DydxFlashloaner {
+contract InstaDydxFlashLoan is DydxFlashloaner {
+    constructor(
+        uint _vaultId
+    ) public {
+        wethContract.approve(wethAddr, uint(-1));
+        vaultId = _vaultId;
+    }
 
-//     receive() external payable {}
-// }
+    receive() external payable {}
+}
