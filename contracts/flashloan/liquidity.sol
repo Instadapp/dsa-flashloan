@@ -225,8 +225,15 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         solo.operate(accountInfos, operations);
 
         for (uint i = 0; i < _length; i++) {
-            finBals[i] = add(_tokenContracts[i].balanceOf(address(this)), wmul(_amounts[i]), fee);
-            require(sub(iniBals[i], finBals[i]) < 5, "amount-paid-less");
+            finBals[i] = _tokenContracts[i].balanceOf(address(this));
+            if (fee == 0) {
+                require(sub(iniBals[i], finBals[i]) < 5, "amount-paid-less");
+            } else {
+                uint _feeLowerLimit = wmul(_amounts[i], wmul(fee, 999900000000000000)); // removing 0.01% fee for decimal/dust error
+                uint _feeUpperLimit = wmul(_amounts[i], wmul(fee, 1000100000000000000)); // adding 0.01% fee for decimal/dust error
+                uint _dif = sub(finBals[i], iniBals[i]);
+                require(_feeLowerLimit < _dif && _dif < _feeUpperLimit, "amount-paid-less");
+            }
         }
 
     }
@@ -258,8 +265,15 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         solo.operate(accountInfos, operations);
 
         for (uint i = 0; i < _length; i++) {
-            uint finBal = add(_tokenContracts[i].balanceOf(address(this)), wmul(_amounts[i]), fee);
-            require(sub(iniBals[i], finBal) < 5, "amount-paid-less");
+            finBals[i] = _tokenContracts[i].balanceOf(address(this));
+            if (fee == 0) {
+                require(sub(iniBals[i], finBals[i]) < 5, "amount-paid-less");
+            } else {
+                uint _feeLowerLimit = wmul(_amounts[i], wmul(fee, 999900000000000000)); // removing 0.01% fee for decimal/dust error
+                uint _feeUpperLimit = wmul(_amounts[i], wmul(fee, 1000100000000000000)); // adding 0.01% fee for decimal/dust error
+                uint _dif = sub(finBals[i], iniBals[i]);
+                require(_feeLowerLimit < _dif && _dif < _feeUpperLimit, "amount-paid-less");
+            }
         }
     }
 
