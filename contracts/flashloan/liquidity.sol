@@ -410,7 +410,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         wethContract.deposit.value(address(this).balance)();
     }
 
-    function routeDydx(address[] memory _tokens, uint256[] memory _amounts, uint _route, bytes calldata data) internal {
+    function routeDydx(address[] memory _tokens, uint256[] memory _amounts, uint _route, bytes memory data) internal {
         uint _length = _tokens.length;
         IERC20[] memory _tokenContracts = new IERC20[](_length);
         uint[] memory _marketIds = new uint[](_length);
@@ -457,7 +457,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
 
     }
 
-    function routeProtocols(address[] memory _tokens, uint256[] memory _amounts, uint _route, bytes calldata data) internal {
+    function routeProtocols(address[] memory _tokens, uint256[] memory _amounts, uint _route, bytes memory data) internal {
         uint _length = _tokens.length;
         uint256 wethMarketId = 0;
 
@@ -498,8 +498,8 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
     }
 
     function initiateFlashLoan(
-        address[] memory _tokens,
-        uint256[] memory _amounts,
+        address[] calldata _tokens,
+        uint256[] calldata _amounts,
         uint _route,
         bytes calldata data
     ) external {
