@@ -71,7 +71,8 @@ contract Helpers is DSMath {
     }
 
     function getAddressWETH() internal pure returns (address) {
-        return 0xd0A1E359811322d97991E03f863a0C30C2cF029C; // ETH Address
+        // return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // mainnet
+        return 0xd0A1E359811322d97991E03f863a0C30C2cF029C; // kovan
     }
 
     function isETH(address token) internal pure returns(bool) {
@@ -85,7 +86,8 @@ contract CompoundHelpers is Helpers {
      * @dev Return Compound Comptroller Address
      */
     function getComptrollerAddress() internal pure returns (address) {
-        return 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
+        // return 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B; // main
+        return 0x1f5D7F3CaAC149fE41b8bd62A3673FE6eC0AB73b; // kovan
     }
 
     /**
@@ -183,7 +185,7 @@ contract MasterResolver is BasicResolver {
     /**
      * @dev enter compound market
      */
-    function enterMarkets(address[] memory cTokens) external {
+    function enterMarkets(address[] calldata cTokens) external {
         ComptrollerInterface troller = ComptrollerInterface(getComptrollerAddress());
         troller.enterMarkets(cTokens);
     }
