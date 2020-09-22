@@ -236,13 +236,23 @@ interface IndexInterface {
   function master() external view returns (address);
 }
 
+interface TokenInterface {
+    function approve(address, uint256) external;
+    function transfer(address, uint) external;
+    function transferFrom(address, address, uint) external;
+    function deposit() external payable;
+    function withdraw(uint) external;
+    function balanceOf(address) external view returns (uint);
+    function decimals() external view returns (uint);
+}
+
 contract Setup {
     IndexInterface public constant instaIndex = IndexInterface(0x2971AdFa57b20E5a416aE5a708A8655A9c74f723);
 
     address public constant soloAddr = 0x4EC3570cADaAEE08Ae384779B0f3A45EF85289DE;
     address public constant wethAddr = 0xd0A1E359811322d97991E03f863a0C30C2cF029C;
     address public constant ethAddr = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-    IERC20 wethContract = IERC20(wethAddr);
+    TokenInterface wethContract = TokenInterface(wethAddr);
     ISoloMargin solo = ISoloMargin(soloAddr);
 
     address public makerConnect = address(0);
@@ -407,7 +417,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
 
         selectPayback(cd.tokens, cd.route);
 
-        wethContract.deposit.value(address(this).balance)();
+        wethContract.deposit{value: address(this).balance}();
     }
 
     function routeDydx(address[] memory _tokens, uint256[] memory _amounts, uint _route, bytes memory data) internal {
