@@ -416,8 +416,9 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         uint[] memory _marketIds = new uint[](_length);
 
         for (uint i = 0; i < _length; i++) {
-            _marketIds[i] = _getMarketIdFromTokenAddress(soloAddr, _tokens[i]);
-            _tokenContracts[i] = IERC20(_tokens[i]);
+            address _token =  _tokens[i] == ethAddr ? wethAddr : _tokens[i];
+            _marketIds[i] = _getMarketIdFromTokenAddress(soloAddr, _token);
+            _tokenContracts[i] = IERC20(_token);
             _tokenContracts[i].approve(soloAddr, _amounts[i] + 2); // TODO - give infinity allowance??
         }
 
@@ -479,7 +480,8 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         uint[] memory finBals = new uint[](_length);
         IERC20[] memory _tokenContracts = new IERC20[](_length);
         for (uint i = 0; i < _length; i++) {
-            _tokenContracts[i] = IERC20(_tokens[i]);
+            address _token =  _tokens[i] == ethAddr ? wethAddr : _tokens[i];
+            _tokenContracts[i] = IERC20(_token);
             iniBals[i] = _tokenContracts[i].balanceOf(address(this));
         }
 
