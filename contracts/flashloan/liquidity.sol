@@ -428,8 +428,9 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
             operations[i] = _getWithdrawAction(_marketIds[i], _amounts[i]);
         }
         operations[_length] = _getCallAction(encodeDsaCastData(msg.sender, _route, _tokens, _amounts, data));
-        for (uint i = _length + 1; i < _opLength; i++) {
-            operations[i] = _getDepositAction(_marketIds[i], _amounts[i] + 2);
+        for (uint i = 0; i < _length; i++) {
+            uint _opIndex = _length + 1 + i;
+            operations[_opIndex] = _getDepositAction(_marketIds[i], _amounts[i] + 2);
         }
 
         Account.Info[] memory accountInfos = new Account.Info[](1);
