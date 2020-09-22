@@ -5,8 +5,228 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import { DSMath } from "../libs/math.sol";
 
-import {DydxFlashloanBase} from "./dydx/DydxFlashloanBase.sol";
-import {ICallee} from "./dydx/ICallee.sol";
+interface Account {
+    struct Info {
+        address owner; // The address that owns the account
+        uint256 number; // A nonce that allows a single address to control many accounts
+    }
+}
+
+interface Actions {
+    enum ActionType {
+        Deposit, // supply tokens
+        Withdraw, // borrow tokens
+        Transfer, // transfer balance between accounts
+        Buy, // buy an amount of some token (publicly)
+        Sell, // sell an amount of some token (publicly)
+        Trade, // trade tokens against another account
+        Liquidate, // liquidate an undercollateralized or expiring account
+        Vaporize, // use excess tokens to zero-out a completely negative account
+        Call // send arbitrary data to an address
+    }
+
+    struct ActionArgs {
+        ActionType actionType;
+        uint256 accountId;
+        Types.AssetAmount amount;
+        uint256 primaryMarketId;
+        uint256 secondaryMarketId;
+        address otherAddress;
+        uint256 otherAccountId;
+        bytes data;
+    }
+
+    struct DepositArgs {
+        Types.AssetAmount amount;
+        Account.Info account;
+        uint256 market;
+        address from;
+    }
+
+    struct WithdrawArgs {
+        Types.AssetAmount amount;
+        Account.Info account;
+        uint256 market;
+        address to;
+    }
+
+    struct CallArgs {
+        Account.Info account;
+        address callee;
+        bytes data;
+    }
+}
+
+interface Types {
+    enum AssetDenomination {
+        Wei, // the amount is denominated in wei
+        Par // the amount is denominated in par
+    }
+
+    enum AssetReference {
+        Delta, // the amount is given as a delta from the current value
+        Target // the amount is given as an exact number to end up at
+    }
+
+    struct AssetAmount {
+        bool sign; // true if positive
+        AssetDenomination denomination;
+        AssetReference ref;
+        uint256 value;
+    }
+
+    struct Wei {
+        bool sign; // true if positive
+        uint256 value;
+    }
+}
+
+
+interface ISoloMargin {
+    struct OperatorArg {
+        address operator;
+        bool trusted;
+    }
+
+    function getMarketTokenAddress(uint256 marketId)
+        external
+        view
+        returns (address);
+
+    function getNumMarkets() external view returns (uint256);
+
+
+    function operate(
+        Account.Info[] calldata accounts,
+        Actions.ActionArgs[] calldata actions
+    ) external;
+
+    function getAccountWei(Account.Info calldata account, uint256 marketId)
+        external
+        view
+        returns (Types.Wei memory);
+}
+
+contract DydxFlashloanBase {
+    function _getMarketIdFromTokenAddress(address _solo, address token)
+        internal
+        view
+        returns (uint256)
+    {
+        ISoloMargin solo = ISoloMargin(_solo);
+
+        uint256 numMarkets = solo.getNumMarkets();
+
+        address curToken;
+        for (uint256 i = 0; i < numMarkets; i++) {
+            curToken = solo.getMarketTokenAddress(i);
+
+            if (curToken == token) {
+                return i;
+            }
+        }
+
+        revert("No marketId found for provided token");
+    }
+
+    function _getAccountInfo() internal view returns (Account.Info memory) {
+        return Account.Info({owner: address(this), number: 1});
+    }
+
+    function _getWithdrawAction(uint marketId, uint256 amount)
+        internal
+        view
+        returns (Actions.ActionArgs memory)
+    {
+        return
+            Actions.ActionArgs({
+                actionType: Actions.ActionType.Withdraw,
+                accountId: 0,
+                amount: Types.AssetAmount({
+                    sign: false,
+                    denomination: Types.AssetDenomination.Wei,
+                    ref: Types.AssetReference.Delta,
+                    value: amount
+                }),
+                primaryMarketId: marketId,
+                secondaryMarketId: 0,
+                otherAddress: address(this),
+                otherAccountId: 0,
+                data: ""
+            });
+    }
+
+    function _getCallAction(bytes memory data)
+        internal
+        view
+        returns (Actions.ActionArgs memory)
+    {
+        return
+            Actions.ActionArgs({
+                actionType: Actions.ActionType.Call,
+                accountId: 0,
+                amount: Types.AssetAmount({
+                    sign: false,
+                    denomination: Types.AssetDenomination.Wei,
+                    ref: Types.AssetReference.Delta,
+                    value: 0
+                }),
+                primaryMarketId: 0,
+                secondaryMarketId: 0,
+                otherAddress: address(this),
+                otherAccountId: 0,
+                data: data
+            });
+    }
+
+    function _getDepositAction(uint marketId, uint256 amount)
+        internal
+        view
+        returns (Actions.ActionArgs memory)
+    {
+        return
+            Actions.ActionArgs({
+                actionType: Actions.ActionType.Deposit,
+                accountId: 0,
+                amount: Types.AssetAmount({
+                    sign: true,
+                    denomination: Types.AssetDenomination.Wei,
+                    ref: Types.AssetReference.Delta,
+                    value: amount
+                }),
+                primaryMarketId: marketId,
+                secondaryMarketId: 0,
+                otherAddress: address(this),
+                otherAccountId: 0,
+                data: ""
+            });
+    }
+}
+
+/**
+ * @title ICallee
+ * @author dYdX
+ *
+ * Interface that Callees for Solo must implement in order to ingest data.
+ */
+interface ICallee {
+
+    // ============ Public Functions ============
+
+    /**
+     * Allows users to send this contract arbitrary data.
+     *
+     * @param  sender       The msg.sender to Solo
+     * @param  accountInfo  The account from which the data is being sent
+     * @param  data         Arbitrary data given by the sender
+     */
+    function callFunction(
+        address sender,
+        Account.Info calldata accountInfo,
+        bytes calldata data
+    )
+        external;
+}
 
 interface DSAInterface {
     function cast(address[] calldata _targets, bytes[] calldata _datas, address _origin) external payable;
@@ -23,12 +243,13 @@ contract Setup {
     address public constant wethAddr = 0xd0A1E359811322d97991E03f863a0C30C2cF029C;
     address public constant ethAddr = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     IERC20 wethContract = IERC20(wethAddr);
+    ISoloMargin solo = ISoloMargin(soloAddr);
 
     address public makerConnect = address(0);
     address public compoundConnect = address(0);
     address public aaveConnect = address(0);
 
-    uint public vaultId; // CHECK9898 - open vault from constructor
+    uint public vaultId;
     uint public fee = 5 * 10 ** 14; // Fee in percent
 
     modifier isMaster() {
@@ -58,7 +279,7 @@ contract Helper is Setup {
         CastData memory cd;
         (cd.dsaTargets, cd.dsaData) = abi.decode(
             data,
-            (uint256, address[], bytes[])
+            (address[], bytes[])
         );
         _data = abi.encode(dsa, route, tokens, amounts, cd.dsaTargets, cd.dsaData);
     }
@@ -168,19 +389,17 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
             (address, uint256, address[], uint256[], address[], bytes[])
         );
 
-        wethContract.withdraw(wethContract.balanceOf(this));
+        wethContract.withdraw(wethContract.balanceOf(address(this)));
 
         selectBorrow(cd.tokens, cd.amounts, cd.route);
 
         uint _length = cd.tokens.length;
 
-        IERC20 tokenContracts = new IERC20(_length);
         for (uint i = 0; i < _length; i++) {
             if (cd.tokens[i] == ethAddr) {
                 payable(cd.dsa).transfer(cd.amounts[i]);
             } else {
-                tokenContracts[i] = IERC20(cd.tokens[i]);
-                tokenContracts[i].safeTransfer(cd.dsa, cd.amounts[i]);
+                IERC20(cd.tokens[i]).safeTransfer(cd.dsa, cd.amounts[i]);
             }
         }
 
@@ -193,11 +412,11 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
 
     function routeDydx(address[] memory _tokens, uint256[] memory _amounts, uint _route, bytes calldata data) internal {
         uint _length = _tokens.length;
-        IERC20[] _tokenContracts = new IERC20(_length);
-        uint[] _marketIds = new uint(_length);
+        IERC20[] memory _tokenContracts = new IERC20[](_length);
+        uint[] memory _marketIds = new uint[](_length);
 
         for (uint i = 0; i < _length; i++) {
-            _marketIds[i] = _getMarketIdFromTokenAddress(soloAddr, _token);
+            _marketIds[i] = _getMarketIdFromTokenAddress(soloAddr, _tokens[i]);
             _tokenContracts[i] = IERC20(_tokens[i]);
             _tokenContracts[i].approve(soloAddr, _amounts[i] + 2); // TODO - give infinity allowance??
         }
@@ -210,14 +429,14 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         }
         operations[_length] = _getCallAction(encodeDsaCastData(msg.sender, _route, _tokens, _amounts, data));
         for (uint i = _length + 1; i < _opLength; i++) {
-            operations[i] = _getDepositAction(marketId, _amounts[i] + 2);
+            operations[i] = _getDepositAction(_marketIds[i], _amounts[i] + 2);
         }
 
         Account.Info[] memory accountInfos = new Account.Info[](1);
         accountInfos[0] = _getAccountInfo();
 
-        uint[] iniBals = new uint(_length);
-        uint[] finBals = new uint(_length);
+        uint[] memory iniBals = new uint[](_length);
+        uint[] memory finBals = new uint[](_length);
         for (uint i = 0; i < _length; i++) {
             iniBals[i] = _tokenContracts[i].balanceOf(address(this));
         }
@@ -255,8 +474,9 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         Account.Info[] memory accountInfos = new Account.Info[](1);
         accountInfos[0] = _getAccountInfo();
 
-        uint[] iniBals = new uint(_length);
-        IERC20[] _tokenContracts = new IERC20(_length);
+        uint[] memory iniBals = new uint[](_length);
+        uint[] memory finBals = new uint[](_length);
+        IERC20[] memory _tokenContracts = new IERC20[](_length);
         for (uint i = 0; i < _length; i++) {
             _tokenContracts[i] = IERC20(_tokens[i]);
             iniBals[i] = _tokenContracts[i].balanceOf(address(this));
@@ -283,7 +503,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         uint _route,
         bytes calldata data
     ) external {
-        if (route == 0) {
+        if (_route == 0) {
             routeDydx(_tokens, _amounts, _route, data);
         } else {
             routeProtocols(_tokens, _amounts, _route, data);
