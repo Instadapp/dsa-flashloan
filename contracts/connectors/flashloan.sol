@@ -229,7 +229,7 @@ contract LiquidityAccessMulti is LiquidityAccess {
      * @param route Route to borrow.
      * @param data targets & data for cast.
      */
-    function flashBorrowAndCast(address[] calldata tokens, uint[] calldata amts, uint route, bytes calldata data) external payable {
+    function flashMultiBorrowAndCast(address[] calldata tokens, uint[] calldata amts, uint route, bytes calldata data) external payable {
         AccountInterface(address(this)).enable(getDydxFlashAddr());
 
         for (uint i = 0; i < tokens.length; i++) {
