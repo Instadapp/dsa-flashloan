@@ -458,7 +458,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         for (uint i = 0; i < _length; i++) {
             finBals[i] = _tokenContracts[i].balanceOf(address(this));
             if (fee == 0) {
-                require(sub(iniBals[i], finBals[i]) < 5, "amount-paid-less");
+                require(sub(iniBals[i], finBals[i]) < 10000, "amount-paid-less");
             } else {
                 uint _feeLowerLimit = wmul(_amounts[i], wmul(fee, 999500000000000000)); // removing 0.05% fee for decimal/dust error
                 uint _feeUpperLimit = wmul(_amounts[i], wmul(fee, 1000500000000000000)); // adding 0.05% fee for decimal/dust error
