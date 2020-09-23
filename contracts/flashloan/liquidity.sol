@@ -503,6 +503,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
             } else {
                 uint _feeLowerLimit = wmul(_amounts[i], wmul(fee, 999500000000000000)); // removing 0.05% fee for decimal/dust error
                 uint _feeUpperLimit = wmul(_amounts[i], wmul(fee, 1000500000000000000)); // adding 0.05% fee for decimal/dust error
+                require(finBals[i] >= iniBals[i], "final-balance-less-than-inital-balance");
                 _feeAmts[i] = sub(finBals[i], iniBals[i]);
                 require(_feeLowerLimit < _feeAmts[i] && _feeAmts[i] < _feeUpperLimit, "amount-paid-less");
             }
@@ -556,6 +557,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
             } else {
                 uint _feeLowerLimit = wmul(_amounts[i], wmul(fee, 999500000000000000)); // removing 0.05% fee for decimal/dust error
                 uint _feeUpperLimit = wmul(_amounts[i], wmul(fee, 1000500000000000000)); // adding 0.05% fee for decimal/dust error
+                require(finBals[i] >= iniBals[i], "final-balance-less-than-inital-balance");
                 _feeAmts[i] = sub(finBals[i], iniBals[i]);
                 require(_feeLowerLimit < _feeAmts[i] && _feeAmts[i] < _feeUpperLimit, "amount-paid-less");
             }
