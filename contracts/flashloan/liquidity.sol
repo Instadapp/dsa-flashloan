@@ -474,7 +474,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         uint256 wethMarketId = 0;
 
         uint _amount = wethContract.balanceOf(soloAddr); // CHECK9898 - does solo has all the ETH?
-        _amount = wdiv(_amount, 999000000000000000); // 99.9% weth borrow
+        _amount = wmul(_amount, 999000000000000000); // 99.9% weth borrow
         wethContract.approve(soloAddr, _amount + 2);
 
         Actions.ActionArgs[] memory operations = new Actions.ActionArgs[](3);
