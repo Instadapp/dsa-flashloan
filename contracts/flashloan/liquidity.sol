@@ -260,7 +260,7 @@ contract Setup {
     address public aaveConnect = address(0);
 
     uint public vaultId;
-    uint public fee = 5 * 10 ** 14; // Fee in percent
+    uint public fee; // Fee in percent
 
     modifier isMaster() {
         require(msg.sender == instaIndex.master(), "not-master");
@@ -532,6 +532,7 @@ contract InstaDydxFlashLoan is DydxFlashloaner {
     ) public {
         wethContract.approve(wethAddr, uint(-1));
         vaultId = _vaultId;
+        fee =  5 * 10 ** 14;
     }
 
     receive() external payable {}
