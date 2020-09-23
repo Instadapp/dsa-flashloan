@@ -408,7 +408,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         address sender,
         Account.Info memory account,
         bytes memory data
-    ) public override isDSA {
+    ) public override {
         require(sender == address(this), "not-same-sender");
         CastData memory cd;
         (cd.dsa, cd.route, cd.tokens, cd.amounts, cd.dsaTargets, cd.dsaData) = abi.decode(
@@ -554,7 +554,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         uint256[] calldata _amounts,
         uint _route,
         bytes calldata data
-    ) external {
+    ) external isDSA {
         if (_route == 0) {
             routeDydx(_tokens, _amounts, _route, data);
         } else {
