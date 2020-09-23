@@ -294,6 +294,8 @@ contract Setup {
 }
 
 contract Helper is Setup {
+    event LogChangedFee(uint newFee);
+
     function encodeDsaCastData(
         address dsa,
         uint route,
@@ -324,8 +326,9 @@ contract Helper is Setup {
 
     function updateFee(uint _fee) public isMaster {
         require(_fee != fee, "same-fee");
-        fee = _fee; // any more conditions. Max fee limit?
-        // TODO - add event
+        require(_fee < 10 ** 15, "more-than-max-fee"); 
+        fee = _fee;
+        emit LogChangedFee(_fee);
     }
 
     function masterSpell(address _target, bytes calldata _data) external isMaster {
@@ -363,7 +366,6 @@ contract Resolver is Helper {
         }
     }
 
-    // CHECK9898 - Aave charges 0.000001% something fees. Keep that in mind at time of payback
     function selectPayback(address[] memory tokens, uint route) internal {
         if (route == 0) {
             return;
