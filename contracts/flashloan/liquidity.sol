@@ -12,6 +12,10 @@ interface Account {
     }
 }
 
+interface ListInterface {
+    function accountID(address) external view returns (uint64);
+}
+
 interface Actions {
     enum ActionType {
         Deposit, // supply tokens
@@ -248,6 +252,7 @@ interface TokenInterface {
 
 contract Setup {
     IndexInterface public constant instaIndex = IndexInterface(0x2971AdFa57b20E5a416aE5a708A8655A9c74f723);
+    ListInterface public constant instaList = ListInterface(0x4c8a1BEb8a87765788946D6B19C6C6355194AbEb);
 
     address public constant soloAddr = 0x4EC3570cADaAEE08Ae384779B0f3A45EF85289DE;
     address public constant wethAddr = 0xd0A1E359811322d97991E03f863a0C30C2cF029C;
@@ -264,6 +269,16 @@ contract Setup {
 
     modifier isMaster() {
         require(msg.sender == instaIndex.master(), "not-master");
+        _;
+    }
+
+    /**
+     * FOR SECURITY PURPOSE
+     * only Smart DEFI Account can access the liquidity pool contract
+     */
+    modifier isDSA {
+        uint64 id = instaList.accountID(msg.sender);
+        require(id != 0, "not-dsa-id");
         _;
     }
 
@@ -393,7 +408,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         address sender,
         Account.Info memory account,
         bytes memory data
-    ) public override {
+    ) public override isDSA {
         require(sender == address(this), "not-same-sender");
         CastData memory cd;
         (cd.dsa, cd.route, cd.tokens, cd.amounts, cd.dsaTargets, cd.dsaData) = abi.decode(
