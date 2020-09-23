@@ -181,7 +181,7 @@ contract BasicResolver is AaveHelpers {
     function borrow(address token, uint amt) external payable {
         uint _amt = amt;
         AaveInterface aave = AaveInterface(getAaveProvider().getLendingPool());
-        aave.borrow(token, _amt, 2, getReferralCode()); // TODO - stable or variable borrowing?
+        aave.borrow(token, _amt, 2, getReferralCode());
         
 
         emit LogBorrow(token, _amt);
