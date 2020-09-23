@@ -570,6 +570,19 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         );
 
     }
+
+    function initiateFlashLoan(	
+        address[] calldata _tokens,	
+        uint256[] calldata _amounts,	
+        uint _route,	
+        bytes calldata data	
+    ) external isDSA {	
+        if (_route == 0) {	
+            routeDydx(_tokens, _amounts, _route, data);	
+        } else {	
+            routeProtocols(_tokens, _amounts, _route, data);	
+        }	
+    }
 }
 
 contract InstaDydxFlashLoan is DydxFlashloaner {
