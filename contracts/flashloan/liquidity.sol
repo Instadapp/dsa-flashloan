@@ -406,6 +406,20 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         uint route
     );
 
+    function checkWeth(address[] memory tokens, uint _route) internal pure returns (bool) {
+        if (_route == 0) {
+            for (uint i = 0; i < tokens.length; i++) {
+                if (tokens[i] == ethAddr) {
+                    return true;
+                }
+            }
+        } else {
+            return true;
+        }
+        return false;
+    }
+
+
     function callFunction(
         address sender,
         Account.Info memory account,
@@ -419,7 +433,10 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
             (address, uint256, address[], uint256[], address[], bytes[])
         );
 
-        wethContract.withdraw(wethContract.balanceOf(address(this)));
+        bool isWeth = checkWeth(cd.tokens, cd.route);
+        if (isWeth) {
+            wethContract.withdraw(wethContract.balanceOf(address(this)));
+        }
 
         selectBorrow(cd.tokens, cd.amounts, cd.route);
 
@@ -437,7 +454,9 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
 
         selectPayback(cd.tokens, cd.route);
 
-        wethContract.deposit{value: address(this).balance}();
+        if (isWeth) {
+            wethContract.deposit{value: address(this).balance}();
+        }
     }
 
     function routeDydx(address[] memory _tokens, uint256[] memory _amounts, uint _route, bytes memory data) internal {
