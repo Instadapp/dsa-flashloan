@@ -523,7 +523,7 @@ contract Helpers is DSMath {
      * @dev Connector Details.
     */
     function connectorID() public pure returns(uint _type, uint _id) {
-        (_type, _id) = (1, 46);
+        (_type, _id) = (1, 48);
     }
 
     function _transfer(address payable to, IERC20 token, uint _amt) internal {
@@ -557,6 +557,16 @@ contract DydxFlashHelpers is Helpers {
             totalAmt = add(amt, feeAmt);
         }
     }
+
+    function calculateFlashFeeAmt(DydxFlashInterface dydxContract, uint flashAmt, uint amt) internal view returns (uint totalAmt) {
+        uint fee = dydxContract.fee();
+        if (fee == 0) {
+            totalAmt = flashAmt;
+        } else {
+            uint feeAmt = wmul(flashAmt, fee);
+            totalAmt = add(amt, feeAmt);
+        }
+    }
 }
 
 contract LiquidityAccessHelper is DydxFlashHelpers {
@@ -566,12 +576,12 @@ contract LiquidityAccessHelper is DydxFlashHelpers {
      * @param getId Get token amount at this ID from `InstaMemory` Contract.
      * @param setId Set token amount at this ID in `InstaMemory` Contract.
     */
-    function addFeeAmount(uint amt, uint getId, uint setId) external payable {
+    function addFeeAmount(uint flashAmt, uint amt, uint getId, uint setId) external payable {
         uint _amt = getUint(getId, amt);
         require(_amt != 0, "amt-is-0");
         DydxFlashInterface dydxContract = DydxFlashInterface(getDydxFlashAddr());
 
-        uint totalFee = calculateTotalFeeAmt(dydxContract, _amt);
+        uint totalFee = calculateFlashFeeAmt(dydxContract, flashAmt, amt);
 
         setUint(setId, totalFee);
     }
@@ -612,7 +622,7 @@ contract LiquidityAccess is LiquidityAccessHelper {
      * @param getId Get token amount at this ID from `InstaMemory` Contract.
      * @param setId Set token amount at this ID in `InstaMemory` Contract.
     */
-    function payback(address token, uint amt, uint getId, uint setId) external payable {
+    function flashPayback(address token, uint amt, uint getId, uint setId) external payable {
         uint _amt = getUint(getId, amt);
         
         DydxFlashInterface dydxContract = DydxFlashInterface(getDydxFlashAddr());
@@ -683,6 +693,6 @@ contract LiquidityAccessMulti is LiquidityAccess {
 
 }
 
-contract ConnectDydxFlashloan is LiquidityAccessMulti {
-    string public name = "dYdX-flashloan-v2.0";
+contract ConnectInstaPool is LiquidityAccessMulti {
+    string public name = "Instapool-v2";
 }
