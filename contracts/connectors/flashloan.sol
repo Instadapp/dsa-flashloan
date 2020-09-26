@@ -581,7 +581,7 @@ contract LiquidityAccessHelper is DydxFlashHelpers {
         require(_amt != 0, "amt-is-0");
         DydxFlashInterface dydxContract = DydxFlashInterface(getDydxFlashAddr());
 
-        uint totalFee = calculateFlashFeeAmt(dydxContract, flashAmt, amt);
+        uint totalFee = calculateFlashFeeAmt(dydxContract, flashAmt, _amt);
 
         setUint(setId, totalFee);
     }
