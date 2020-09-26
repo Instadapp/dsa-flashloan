@@ -561,7 +561,7 @@ contract DydxFlashHelpers is Helpers {
     function calculateFlashFeeAmt(DydxFlashInterface dydxContract, uint flashAmt, uint amt) internal view returns (uint totalAmt) {
         uint fee = dydxContract.fee();
         if (fee == 0) {
-            totalAmt = flashAmt;
+            totalAmt = amt;
         } else {
             uint feeAmt = wmul(flashAmt, fee);
             totalAmt = add(amt, feeAmt);
