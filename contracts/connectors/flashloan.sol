@@ -157,7 +157,7 @@ contract LiquidityAccessHelper is DydxFlashHelpers {
 contract LiquidityAccess is LiquidityAccessHelper {
 
     event LogDydxFlashBorrow(address[] token, uint256[] tokenAmt);
-    event LogDydxFlashPayback(address[] token, uint256[] tokenAmt, uint256[] totalAmtFee);
+    event LogDydxFlashPayback(address[] token, uint256[] totalAmtWithFee);
 
     /**
      * @dev Borrow Flashloan and Cast spells.
@@ -191,23 +191,18 @@ contract LiquidityAccess is LiquidityAccessHelper {
     function payback(address token, uint amt, uint getId, uint setId) external payable {
         uint _amt = getUint(getId, amt);
         
-        DydxFlashInterface dydxContract = DydxFlashInterface(getDydxFlashAddr());
         IERC20 tokenContract = IERC20(token);
 
-        (uint totalFeeAmt) = calculateTotalFeeAmt(dydxContract, _amt);
-
-        _transfer(payable(address(getDydxFlashAddr())), tokenContract, totalFeeAmt);
+        _transfer(payable(address(getDydxFlashAddr())), tokenContract, _amt);
 
         setUint(setId, _amt);
 
         address[] memory tokens = new address[](1);
         uint[] memory amts = new uint[](1);
-        uint[] memory totalFeeAmts = new uint[](1);
         tokens[0] = token;
-        amts[0] = amt;
-        totalFeeAmts[0] = totalFeeAmt;
+        amts[0] = _amt;
 
-        emit LogDydxFlashPayback(tokens, amts, totalFeeAmts);
+        emit LogDydxFlashPayback(tokens, amts);
     }
 }
 
@@ -239,22 +234,17 @@ contract LiquidityAccessMulti is LiquidityAccess {
     */
     function flashMultiPayback(address[] calldata tokens, uint[] calldata amts, uint[] calldata getId, uint[] calldata setId) external payable {
         uint _length = tokens.length;
-        DydxFlashInterface dydxContract = DydxFlashInterface(getDydxFlashAddr());
 
-        uint[] memory totalAmtFees = new uint[](_length);
         for (uint i = 0; i < _length; i++) {
             uint _amt = getUint(getId[i], amts[i]);
             IERC20 tokenContract = IERC20(tokens[i]);
-
-            
-            (totalAmtFees[i]) = calculateTotalFeeAmt(dydxContract, _amt);
 
             _transfer(payable(address(getDydxFlashAddr())), tokenContract, _amt);
 
             setUint(setId[i], _amt);
         }
 
-        emit LogDydxFlashPayback(tokens, amts, totalAmtFees);
+        emit LogDydxFlashPayback(tokens, amts);
     }
 
 }
