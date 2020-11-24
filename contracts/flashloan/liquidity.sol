@@ -257,6 +257,7 @@ contract Setup {
     address public constant soloAddr = 0x4EC3570cADaAEE08Ae384779B0f3A45EF85289DE;
     address public constant wethAddr = 0xd0A1E359811322d97991E03f863a0C30C2cF029C;
     address public constant ethAddr = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    
     TokenInterface wethContract = TokenInterface(wethAddr);
     ISoloMargin solo = ISoloMargin(soloAddr);
 
@@ -334,7 +335,6 @@ contract Helper is Setup {
     function masterSpell(address _target, bytes calldata _data) external isMaster {
         spell(_target, _data);
     }
-
 }
 
 contract Resolver is Helper {
@@ -398,6 +398,13 @@ contract Resolver is Helper {
 contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
     using SafeERC20 for IERC20;
 
+    struct FlashLoanData {
+        uint[] _iniBals;
+        uint[] _finBals;
+        uint[] _feeAmts;
+        uint[] _tokenDecimals;
+    }
+
     event LogFlashLoan(
         address indexed sender,
         address[] tokens,
@@ -417,6 +424,10 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
             return true;
         }
         return false;
+    }
+
+    function convertTo18(uint _dec, uint256 _amt) internal pure returns (uint256 amt) {
+        amt = mul(_amt, 10 ** (18 - _dec));
     }
 
 
@@ -486,26 +497,31 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         Account.Info[] memory accountInfos = new Account.Info[](1);
         accountInfos[0] = _getAccountInfo();
 
-        uint[] memory iniBals = new uint[](_length);
-        uint[] memory finBals = new uint[](_length);
-        uint[] memory _feeAmts = new uint[](_length);
+        FlashLoanData memory flashloanData;
+
+        flashloanData._iniBals = new uint[](_length);
+        flashloanData._finBals = new uint[](_length);
+        flashloanData._feeAmts = new uint[](_length);
+        flashloanData._tokenDecimals = new uint[](_length);
         for (uint i = 0; i < _length; i++) {
-            iniBals[i] = _tokenContracts[i].balanceOf(address(this));
+            flashloanData._iniBals[i] = _tokenContracts[i].balanceOf(address(this));
+            flashloanData._tokenDecimals[i] = TokenInterface(address(_tokenContracts[i])).decimals();
         }
 
         solo.operate(accountInfos, operations);
 
         for (uint i = 0; i < _length; i++) {
-            finBals[i] = _tokenContracts[i].balanceOf(address(this));
+            flashloanData._finBals[i] = _tokenContracts[i].balanceOf(address(this));
             if (fee == 0) {
-                _feeAmts[i] = 0;
-                require(sub(iniBals[i], finBals[i]) < 10000, "amount-paid-less");
+                flashloanData._feeAmts[i] = 0;
+                uint _dif = wmul(convertTo18(_amounts[i], flashloanData._tokenDecimals[i]), 200000000000); // Taking margin of 0.0000002%
+                require(convertTo18(sub(flashloanData._iniBals[i], flashloanData._finBals[i]), flashloanData._tokenDecimals[i]) < _dif, "amount-paid-less");
             } else {
                 uint _feeLowerLimit = wmul(_amounts[i], wmul(fee, 999500000000000000)); // removing 0.05% fee for decimal/dust error
                 uint _feeUpperLimit = wmul(_amounts[i], wmul(fee, 1000500000000000000)); // adding 0.05% fee for decimal/dust error
-                require(finBals[i] >= iniBals[i], "final-balance-less-than-inital-balance");
-                _feeAmts[i] = sub(finBals[i], iniBals[i]);
-                require(_feeLowerLimit < _feeAmts[i] && _feeAmts[i] < _feeUpperLimit, "amount-paid-less");
+                require(flashloanData._finBals[i] >= flashloanData._iniBals[i], "final-balance-less-than-inital-balance");
+                flashloanData._feeAmts[i] = sub(flashloanData._finBals[i], flashloanData._iniBals[i]);
+                require(_feeLowerLimit < flashloanData._feeAmts[i] && flashloanData._feeAmts[i] < _feeUpperLimit, "amount-paid-less");
             }
         }
 
@@ -513,7 +529,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
             msg.sender,
             _tokens,
             _amounts,
-            _feeAmts,
+            flashloanData._feeAmts,
             _route
         );
 
@@ -535,31 +551,35 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
 
         Account.Info[] memory accountInfos = new Account.Info[](1);
         accountInfos[0] = _getAccountInfo();
+        
+        FlashLoanData memory flashloanData;
 
-        uint[] memory iniBals = new uint[](_length);
-        uint[] memory finBals = new uint[](_length);
-        uint[] memory _feeAmts = new uint[](_length);
+        flashloanData._iniBals = new uint[](_length);
+        flashloanData._finBals = new uint[](_length);
+        flashloanData._feeAmts = new uint[](_length);
+        flashloanData._tokenDecimals = new uint[](_length);
         IERC20[] memory _tokenContracts = new IERC20[](_length);
         for (uint i = 0; i < _length; i++) {
             address _token =  _tokens[i] == ethAddr ? wethAddr : _tokens[i];
             _tokenContracts[i] = IERC20(_token);
-            iniBals[i] = _tokenContracts[i].balanceOf(address(this));
+            flashloanData._iniBals[i] = _tokenContracts[i].balanceOf(address(this));
+            flashloanData._tokenDecimals[i] = TokenInterface(_token).decimals();
         }
 
         solo.operate(accountInfos, operations);
 
         for (uint i = 0; i < _length; i++) {
-            finBals[i] = _tokenContracts[i].balanceOf(address(this));
+            flashloanData._finBals[i] = _tokenContracts[i].balanceOf(address(this));
             if (fee == 0) {
-                _feeAmts[i] = 0;
-                uint _dif = wmul(_amounts[i], 200000000000); // Taking margin of 0.0000002%
-                require(sub(iniBals[i], finBals[i]) < _dif, "amount-paid-less");
+                flashloanData._feeAmts[i] = 0;
+                uint _dif = wmul(convertTo18(_amounts[i], flashloanData._tokenDecimals[i]), 200000000000); // Taking margin of 0.0000002%
+                require(convertTo18(sub(flashloanData._iniBals[i], flashloanData._finBals[i]), flashloanData._tokenDecimals[i]) < _dif, "amount-paid-less");
             } else {
                 uint _feeLowerLimit = wmul(_amounts[i], wmul(fee, 999500000000000000)); // removing 0.05% fee for decimal/dust error
                 uint _feeUpperLimit = wmul(_amounts[i], wmul(fee, 1000500000000000000)); // adding 0.05% fee for decimal/dust error
-                require(finBals[i] >= iniBals[i], "final-balance-less-than-inital-balance");
-                _feeAmts[i] = sub(finBals[i], iniBals[i]);
-                require(_feeLowerLimit < _feeAmts[i] && _feeAmts[i] < _feeUpperLimit, "amount-paid-less");
+                require(flashloanData._finBals[i] >= flashloanData._iniBals[i], "final-balance-less-than-inital-balance");
+                flashloanData._feeAmts[i] = sub(flashloanData._finBals[i], flashloanData._iniBals[i]);
+                require(_feeLowerLimit < flashloanData._feeAmts[i] && flashloanData._feeAmts[i] < _feeUpperLimit, "amount-paid-less");
             }
         }
 
@@ -567,7 +587,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
             msg.sender,
             _tokens,
             _amounts,
-            _feeAmts,
+            flashloanData._feeAmts,
             _route
         );
 
@@ -593,7 +613,7 @@ contract InstaDydxFlashLoan is DydxFlashloaner {
     ) public {
         wethContract.approve(wethAddr, uint(-1));
         vaultId = _vaultId;
-        fee =  5 * 10 ** 14;
+        fee =  0;
     }
 
     receive() external payable {}
