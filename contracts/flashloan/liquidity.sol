@@ -515,7 +515,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
             if (fee == 0) {
                 flashloanData._feeAmts[i] = 0;
                 uint _dif = wmul(convertTo18(_amounts[i], flashloanData._tokenDecimals[i]), 200000000000); // Taking margin of 0.0000002%
-                require(convertTo18(sub(flashloanData._iniBals[i], flashloanData._finBals[i]), flashloanData._tokenDecimals[i]) < _dif, "amount-paid-less");
+                require(convertTo18(sub(flashloanData._iniBals[i], flashloanData._finBals[i]), flashloanData._tokenDecimals[i]) <= _dif, "amount-paid-less");
             } else {
                 uint _feeLowerLimit = wmul(_amounts[i], wmul(fee, 999500000000000000)); // removing 0.05% fee for decimal/dust error
                 uint _feeUpperLimit = wmul(_amounts[i], wmul(fee, 1000500000000000000)); // adding 0.05% fee for decimal/dust error
@@ -573,7 +573,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
             if (fee == 0) {
                 flashloanData._feeAmts[i] = 0;
                 uint _dif = wmul(convertTo18(_amounts[i], flashloanData._tokenDecimals[i]), 200000000000); // Taking margin of 0.0000002%
-                require(convertTo18(sub(flashloanData._iniBals[i], flashloanData._finBals[i]), flashloanData._tokenDecimals[i]) < _dif, "amount-paid-less");
+                require(convertTo18(sub(flashloanData._iniBals[i], flashloanData._finBals[i]), flashloanData._tokenDecimals[i]) <= _dif, "amount-paid-less");
             } else {
                 uint _feeLowerLimit = wmul(_amounts[i], wmul(fee, 999500000000000000)); // removing 0.05% fee for decimal/dust error
                 uint _feeUpperLimit = wmul(_amounts[i], wmul(fee, 1000500000000000000)); // adding 0.05% fee for decimal/dust error
