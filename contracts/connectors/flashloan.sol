@@ -632,7 +632,7 @@ contract LiquidityAccess is LiquidityAccessHelper {
 
         _transfer(payable(address(getDydxFlashAddr())), tokenContract, totalFeeAmt);
 
-        setUint(setId, _amt);
+        setUint(setId, totalFeeAmt);
 
         address[] memory tokens = new address[](1);
         uint[] memory amts = new uint[](1);
@@ -683,9 +683,9 @@ contract LiquidityAccessMulti is LiquidityAccess {
             
             (totalAmtFees[i]) = calculateTotalFeeAmt(dydxContract, _amt);
 
-            _transfer(payable(address(getDydxFlashAddr())), tokenContract, _amt);
+            _transfer(payable(address(getDydxFlashAddr())), tokenContract, totalAmtFees[i]);
 
-            setUint(setId[i], _amt);
+            setUint(setId[i], totalAmtFees[i]);
         }
 
         emit LogDydxFlashPayback(tokens, amts, totalAmtFees);
