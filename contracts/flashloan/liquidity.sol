@@ -426,7 +426,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         return false;
     }
 
-    function convertTo18(uint _dec, uint256 _amt) internal pure returns (uint256 amt) {
+    function convertTo18(uint256 _amt, uint _dec) internal pure returns (uint256 amt) {
         amt = mul(_amt, 10 ** (18 - _dec));
     }
 
