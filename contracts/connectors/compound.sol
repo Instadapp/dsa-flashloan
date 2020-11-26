@@ -96,6 +96,17 @@ contract CompoundHelpers is Helpers {
     function getMappingAddr() internal pure returns (address) {
         return 0xe81F70Cc7C0D46e12d70efc60607F16bbD617E88; // InstaMapping Address
     }
+
+
+    /**
+     * @dev enter compound market
+     */
+    function enterMarket(address cToken) internal {
+        address[] memory cTokens = new address[](1);
+        cTokens[0] = cToken;
+        ComptrollerInterface troller = ComptrollerInterface(getComptrollerAddress());
+        troller.enterMarkets(cTokens);
+    }
 }
 
 
@@ -113,6 +124,7 @@ contract BasicResolver is CompoundHelpers {
     function deposit(address token, uint amt) external payable{
         address cToken = InstaMapping(getMappingAddr()).cTokenMapping(token);
         uint _amt = amt;
+        enterMarket(cToken);
         if (isETH(token)) {
             _amt = _amt == uint(-1) ? address(this).balance : _amt;
             CETHInterface(cToken).mint.value(_amt)();
@@ -152,6 +164,7 @@ contract BasicResolver is CompoundHelpers {
     function borrow(address token, uint amt) external {
         uint _amt = amt;
         address cToken = InstaMapping(getMappingAddr()).cTokenMapping(token);
+        enterMarket(cToken);
         require(CTokenInterface(cToken).borrow(_amt) == 0, "borrow-failed");
 
         emit LogBorrow(token, _amt);
