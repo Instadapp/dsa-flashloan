@@ -523,7 +523,7 @@ contract Helpers is DSMath {
      * @dev Connector Details.
     */
     function connectorID() public pure returns(uint _type, uint _id) {
-        (_type, _id) = (1, 48);
+        (_type, _id) = (1, 54);
     }
 
     function _transfer(address payable to, IERC20 token, uint _amt) internal {
@@ -542,14 +542,14 @@ contract Helpers is DSMath {
 
 contract DydxFlashHelpers is Helpers {
     /**
-     * @dev Return Dydx flashloan address
+     * @dev Return Instapool address
      */
     function getInstaFlashV2Addr() internal pure returns (address) {
-        return 0x1753758423D19d5ba583e99294B51C86B3F7E512;
+        return 0xD0426eD78A7876116f60840D6a1800Ea28d59292;
     }
 
-    function calculateTotalFeeAmt(InstaFlashV2Interface dydxContract, uint amt) internal view returns (uint totalAmt) {
-        uint fee = dydxContract.fee();
+    function calculateTotalFeeAmt(InstaFlashV2Interface instapoolContract, uint amt) internal view returns (uint totalAmt) {
+        uint fee = instapoolContract.fee();
         if (fee == 0) {
             totalAmt = amt;
         } else {
@@ -558,8 +558,8 @@ contract DydxFlashHelpers is Helpers {
         }
     }
 
-    function calculateFlashFeeAmt(InstaFlashV2Interface dydxContract, uint flashAmt, uint amt) internal view returns (uint totalAmt) {
-        uint fee = dydxContract.fee();
+    function calculateFlashFeeAmt(InstaFlashV2Interface instapoolContract, uint flashAmt, uint amt) internal view returns (uint totalAmt) {
+        uint fee = instapoolContract.fee();
         if (fee == 0) {
             totalAmt = amt;
         } else {
@@ -579,9 +579,9 @@ contract LiquidityAccessHelper is DydxFlashHelpers {
     function addFeeAmount(uint flashAmt, uint amt, uint getId, uint setId) external payable {
         uint _amt = getUint(getId, amt);
         require(_amt != 0, "amt-is-0");
-        InstaFlashV2Interface dydxContract = InstaFlashV2Interface(getInstaFlashV2Addr());
+        InstaFlashV2Interface instapoolContract = InstaFlashV2Interface(getInstaFlashV2Addr());
 
-        uint totalFee = calculateFlashFeeAmt(dydxContract, flashAmt, _amt);
+        uint totalFee = calculateFlashFeeAmt(instapoolContract, flashAmt, _amt);
 
         setUint(setId, totalFee);
     }
@@ -616,7 +616,7 @@ contract LiquidityAccess is LiquidityAccessHelper {
     }
 
     /**
-     * @dev Return token to dydx flashloan.
+     * @dev Return token to InstaPool.
      * @param token token address.(For ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)
      * @param amt token amt.(For ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)
      * @param getId Get token amount at this ID from `InstaMemory` Contract.
@@ -625,10 +625,10 @@ contract LiquidityAccess is LiquidityAccessHelper {
     function flashPayback(address token, uint amt, uint getId, uint setId) external payable {
         uint _amt = getUint(getId, amt);
         
-        InstaFlashV2Interface dydxContract = InstaFlashV2Interface(getInstaFlashV2Addr());
+        InstaFlashV2Interface instapoolContract = InstaFlashV2Interface(getInstaFlashV2Addr());
         IERC20 tokenContract = IERC20(token);
 
-        (uint totalFeeAmt) = calculateTotalFeeAmt(dydxContract, _amt);
+        (uint totalFeeAmt) = calculateTotalFeeAmt(instapoolContract, _amt);
 
         _transfer(payable(address(getInstaFlashV2Addr())), tokenContract, totalFeeAmt);
 
@@ -665,7 +665,7 @@ contract LiquidityAccessMulti is LiquidityAccess {
     }
 
     /**
-     * @dev Return Multiple token liquidity from InstaPool.
+     * @dev Return Multiple token liquidity to InstaPool.
      * @param tokens Array of token addresses.(For ETH: 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE)
      * @param amts Array of token amounts.
      * @param getId get token amounts at this IDs from `InstaMemory` Contract.
@@ -673,7 +673,7 @@ contract LiquidityAccessMulti is LiquidityAccess {
     */
     function flashMultiPayback(address[] calldata tokens, uint[] calldata amts, uint[] calldata getId, uint[] calldata setId) external payable {
         uint _length = tokens.length;
-        InstaFlashV2Interface dydxContract = InstaFlashV2Interface(getInstaFlashV2Addr());
+        InstaFlashV2Interface instapoolContract = InstaFlashV2Interface(getInstaFlashV2Addr());
 
         uint[] memory totalAmtFees = new uint[](_length);
         for (uint i = 0; i < _length; i++) {
@@ -681,7 +681,7 @@ contract LiquidityAccessMulti is LiquidityAccess {
             IERC20 tokenContract = IERC20(tokens[i]);
 
             
-            (totalAmtFees[i]) = calculateTotalFeeAmt(dydxContract, _amt);
+            (totalAmtFees[i]) = calculateTotalFeeAmt(instapoolContract, _amt);
 
             _transfer(payable(address(getInstaFlashV2Addr())), tokenContract, totalAmtFees[i]);
 
@@ -693,6 +693,6 @@ contract LiquidityAccessMulti is LiquidityAccess {
 
 }
 
-contract ConnectInstaPool is LiquidityAccessMulti {
-    string public name = "Instapool-v2";
+contract ConnectInstaPoolV2 is LiquidityAccessMulti {
+    string public name = "Instapool-v2.1";
 }
