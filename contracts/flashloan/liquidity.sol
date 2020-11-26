@@ -254,16 +254,16 @@ contract Setup {
     IndexInterface public constant instaIndex = IndexInterface(0x2971AdFa57b20E5a416aE5a708A8655A9c74f723);
     ListInterface public constant instaList = ListInterface(0x4c8a1BEb8a87765788946D6B19C6C6355194AbEb);
 
-    address public constant soloAddr = 0x4EC3570cADaAEE08Ae384779B0f3A45EF85289DE;
-    address public constant wethAddr = 0xd0A1E359811322d97991E03f863a0C30C2cF029C;
+    address public constant soloAddr = 0x1E0447b19BB6EcFdAe1e4AE1694b0C3659614e4e;
+    address public constant wethAddr = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant ethAddr = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     
     TokenInterface wethContract = TokenInterface(wethAddr);
     ISoloMargin solo = ISoloMargin(soloAddr);
 
-    address public makerConnect = address(0);
-    address public compoundConnect = address(0);
-    address public aaveConnect = address(0);
+    address public makerConnect = address(0x33c4f6d6c0A123AF5F1655EA5Fd730098d0aBD50);
+    address public compoundConnect = address(0x33d4876A16F712f1a305C5594A5AdeDc9b7A9f14);
+    address public aaveConnect = address(0x01d0734e34B0251f46aD34d1a82c4946a5B943D9);
 
     uint public vaultId;
     uint public fee; // Fee in percent
@@ -607,7 +607,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
     }
 }
 
-contract InstaDydxFlashLoan is DydxFlashloaner {
+contract InstaPool is DydxFlashloaner {
     constructor(
         uint _vaultId
     ) public {
