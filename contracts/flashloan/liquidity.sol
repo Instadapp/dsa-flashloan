@@ -504,7 +504,12 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         flashloanData._feeAmts = new uint[](_length);
         flashloanData._tokenDecimals = new uint[](_length);
         for (uint i = 0; i < _length; i++) {
-            flashloanData._iniBals[i] = _tokenContracts[i].balanceOf(address(this));
+            uint tokenBal = _tokenContracts[i].balanceOf(address(this));
+            if (_tokens[i] == ethAddr) {
+                flashloanData._iniBals[i] = add(tokenBal, address(this).balance);
+            } else {
+                flashloanData._iniBals[i] = tokenBal;
+            }
             flashloanData._tokenDecimals[i] = TokenInterface(address(_tokenContracts[i])).decimals();
         }
 
@@ -562,7 +567,12 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         for (uint i = 0; i < _length; i++) {
             address _token =  _tokens[i] == ethAddr ? wethAddr : _tokens[i];
             _tokenContracts[i] = IERC20(_token);
-            flashloanData._iniBals[i] = _tokenContracts[i].balanceOf(address(this));
+            uint tokenBal = _tokenContracts[i].balanceOf(address(this));
+            if (_tokens[i] == ethAddr) {
+                flashloanData._iniBals[i] = add(tokenBal, address(this).balance);
+            } else {
+                flashloanData._iniBals[i] = tokenBal;
+            }
             flashloanData._tokenDecimals[i] = TokenInterface(_token).decimals();
         }
 
