@@ -523,7 +523,7 @@ contract Helpers is DSMath {
      * @dev Connector Details.
     */
     function connectorID() public pure returns(uint _type, uint _id) {
-        (_type, _id) = (1, 54);
+        (_type, _id) = (1, 56);
     }
 
     function _transfer(address payable to, IERC20 token, uint _amt) internal {
@@ -545,7 +545,7 @@ contract DydxFlashHelpers is Helpers {
      * @dev Return Instapool address
      */
     function getInstaFlashV2Addr() internal pure returns (address) {
-        return 0xD0426eD78A7876116f60840D6a1800Ea28d59292;
+        return 0x691d4172331a11912c6D0e6D1A002E3d7CED6a66;
     }
 
     function calculateTotalFeeAmt(InstaFlashV2Interface instapoolContract, uint amt) internal view returns (uint totalAmt) {
@@ -694,5 +694,5 @@ contract LiquidityAccessMulti is LiquidityAccess {
 }
 
 contract ConnectInstaPoolV2 is LiquidityAccessMulti {
-    string public name = "Instapool-v2.1";
+    string public name = "Instapool-v2.2";
 }
