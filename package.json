@@ -25,6 +25,7 @@
     "@openzeppelin/contracts": "^3.0.1",
     "@openzeppelin/upgrades": "^2.8.0",
     "@truffle/artifactor": "^4.0.45",
+    "@truffle/hdwallet-provider": "^1.2.2",
     "chalk": "^4.0.0",
     "dotenv": "^7.0.0",
     "ethereumjs-abi": "^0.6.8",

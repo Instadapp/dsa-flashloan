@@ -28,6 +28,7 @@ public/js/lib/popper.min*
 
 # API keys and secrets
 .env
+.secret
 
 # Dependency directory
 node_modules
