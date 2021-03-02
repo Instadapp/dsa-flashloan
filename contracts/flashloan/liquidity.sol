@@ -4,6 +4,8 @@ pragma experimental ABIEncoderV2;
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import {DSMath} from '../libs/math.sol';
+import './erc3156/interfaces/IERC3156BatchFlashBorrower.sol';
+import './erc3156/interfaces/IERC3156BatchFlashLender.sol';
 
 interface Account {
     struct Info {
@@ -432,7 +434,6 @@ contract Resolver is Helper {
                     );
                 spell(aaveConnect, _dataTwo);
             }
-            require(false, 'borrowed');
         } else {
             revert('route-not-found');
         }
@@ -496,8 +497,19 @@ contract Resolver is Helper {
     }
 }
 
-contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
+contract DydxFlashloaner is
+    Resolver,
+    ICallee,
+    DydxFlashloanBase,
+    DSMath,
+    IERC3156BatchFlashLender,
+    IERC3156BatchFlashBorrower
+{
     using SafeERC20 for IERC20;
+    bytes32 public constant CALLBACK_SUCCESS =
+        keccak256('ERC3156FlashBorrower.onFlashLoan');
+    bytes32 public constant BATCH_CALLBACK_SUCCESS =
+        keccak256('ERC3156BatchFlashBorrower.onBatchFlashLoan');
 
     struct FlashLoanData {
         uint256[] _iniBals;
@@ -513,6 +525,71 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         uint256[] feeAmts,
         uint256 route
     );
+
+    /**
+     * @dev The amount of currency available to be lended.
+     * @param token The loan currency.
+     * @return The amount of `token` that can be borrowed.
+     */
+    function maxFlashLoan(address token)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        //TODO: check all the protocols to figure out the maximum that can be borrowed
+        // need to check the dai minting celing
+        return 0;
+    }
+
+    /**
+     * @dev The fee to be charged for a given loan.
+     * @param token The loan currency.
+     * @param amount The amount of tokens lent.
+     * @return The amount of `token` to be charged for the loan, on top of the returned principal.
+     */
+    function flashFee(address token, uint256 amount)
+        external
+        view
+        override
+        returns (uint256)
+    {
+        //TODO: add logic here
+        return 0;
+    }
+
+    /**
+     * @dev Receive a flash loan.
+     * @param initiator The initiator of the loan.
+     * @param token The loan currency.
+     * @param amount The amount of tokens lent.
+     * @param fee The additional amount of tokens to repay.
+     * @param data Arbitrary data structure, intended to contain user-defined parameters.
+     * @return The keccak256 hash of "ERC3156FlashBorrower.onFlashLoan"
+     */
+    function onFlashLoan(
+        address initiator,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    ) external override returns (bytes32) {
+        Call memory call = abi.decode(data, (Call));
+        _call(call.to, call.value, call.data);
+        return CALLBACK_SUCCESS;
+    }
+
+    function onBatchFlashLoan(
+        address sender,
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        uint256[] calldata fees,
+        bytes calldata data
+    ) external override returns (bytes32) {
+        Call memory call = abi.decode(data, (Call));
+        _call(call.to, call.value, call.data);
+        return BATCH_CALLBACK_SUCCESS;
+    }
 
     function checkWeth(address[] memory tokens, uint256 _route)
         internal
@@ -569,47 +646,83 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
     ) public override {
         require(sender == address(this), 'not-same-sender');
         require(msg.sender == soloAddr, 'not-solo-dydx-sender');
-        CastData memory cd;
-        (
-            cd.dsa,
-            cd.route,
-            cd.tokens,
-            cd.amounts,
-            // cd.dsaTargets,
-            // cd.dsaData
-            cd.call
-        ) = abi.decode(
-            data,
-            // (address, uint256, address[], uint256[], address[], bytes[])
-            (address, uint256, address[], uint256[], Call)
-        );
 
-        bool isWeth = checkWeth(cd.tokens, cd.route);
+        (
+            address origin,
+            address receiver,
+            address[] memory tokens,
+            uint256[] memory amounts,
+            bytes memory userData
+        ) = abi.decode(data, (address, address, address[], uint256[], bytes));
+        (uint256 route, bytes memory call) =
+            abi.decode(userData, (uint256, bytes));
+        bool isWeth = checkWeth(tokens, route);
         if (isWeth) {
             wethContract.withdraw(wethContract.balanceOf(address(this)));
         }
 
-        selectBorrow(cd.tokens, cd.amounts, cd.route);
+        selectBorrow(tokens, amounts, route);
 
-        uint256 _length = cd.tokens.length;
+        uint256 _length = tokens.length;
 
-        for (uint256 i = 0; i < _length; i++) {
-            if (cd.tokens[i] == ethAddr) {
-                payable(cd.dsa).transfer(cd.amounts[i]);
-            } else {
-                IERC20(cd.tokens[i]).safeTransfer(cd.dsa, cd.amounts[i]);
+        if (address(receiver) != address(this)) {
+            for (uint256 i = 0; i < _length; i++) {
+                if (tokens[i] == ethAddr) {
+                    payable(address(receiver)).transfer(amounts[i]);
+                } else {
+                    IERC20(tokens[i]).safeTransfer(
+                        address(receiver),
+                        amounts[i]
+                    );
+                }
+            }
+        }
+        //TODO: for ETH pull mechanism is not possible so we need to figure out a solution for that
+        if (tokens.length == 1) {
+            require(
+                IERC3156FlashBorrower(receiver).onFlashLoan(
+                    origin,
+                    tokens[0],
+                    amounts[0],
+                    /**fee*/
+                    0,
+                    userData
+                ) == CALLBACK_SUCCESS,
+                'Callback failed'
+            );
+        } else {
+            uint256[] memory fees = new uint256[](1);
+            fees[0] = 0;
+            require(
+                IERC3156BatchFlashBorrower(receiver).onBatchFlashLoan(
+                    origin,
+                    tokens,
+                    amounts,
+                    /**fee*/
+                    fees,
+                    userData
+                ) == BATCH_CALLBACK_SUCCESS,
+                'Callback failed'
+            );
+        }
+
+        if (address(receiver) != address(this)) {
+            for (uint256 i = 0; i < _length; i++) {
+                if (tokens[i] != ethAddr) {
+                    IERC20(tokens[i]).safeTransferFrom(
+                        address(receiver),
+                        address(this),
+                        add(
+                            amounts[i],
+                            /** fees*/
+                            0
+                        )
+                    );
+                }
             }
         }
 
-        _call(cd.call.to, cd.call.value, cd.call.data);
-
-        // DSAInterface(cd.dsa).cast(
-        //     cd.dsaTargets,
-        //     cd.dsaData,
-        //     0xB7fA44c2E964B6EB24893f7082Ecc08c8d0c0F87
-        // );
-
-        selectPayback(cd.tokens, cd.route);
+        selectPayback(tokens, route);
 
         if (isWeth) {
             wethContract.deposit.value(address(this).balance)();
@@ -617,6 +730,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
     }
 
     function routeDydx(
+        address receiver,
         address[] memory _tokens,
         uint256[] memory _amounts,
         uint256 _route,
@@ -642,7 +756,9 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         }
 
         operations[_length] = _getCallAction(
-            encodeDsaCastData(msg.sender, _route, _tokens, _amounts, data)
+            // abi.encode(msg.sender, receiver, _tokens, _amounts, _route,data)
+            //route is already in the data
+            abi.encode(msg.sender, receiver, _tokens, _amounts, data)
         );
 
         for (uint256 i = 0; i < _length; i++) {
@@ -735,6 +851,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
     }
 
     function routeProtocols(
+        address receiver,
         address[] memory _tokens,
         uint256[] memory _amounts,
         uint256 _route,
@@ -751,7 +868,9 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
 
         operations[0] = _getWithdrawAction(wethMarketId, _amount);
         operations[1] = _getCallAction(
-            encodeDsaCastData(msg.sender, _route, _tokens, _amounts, data)
+            // abi.encode(msg.sender, receiver, _tokens, _amounts, _route,data)
+            //route is already in the data
+            abi.encode(msg.sender, receiver, _tokens, _amounts, data)
         );
         operations[2] = _getDepositAction(wethMarketId, _amount + 2);
 
@@ -836,17 +955,47 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
         );
     }
 
-    function initiateFlashLoan(
-        address[] calldata _tokens,
-        uint256[] calldata _amounts,
-        uint256 _route,
-        bytes calldata data // isDSA
-    ) external {
-        if (_route == 0) {
-            routeDydx(_tokens, _amounts, _route, data);
+    /**
+     * @dev Initiate a flash loan.
+     * @param receiver The receiver of the tokens in the loan, and the receiver of the callback.
+     * @param token The loan currency.
+     * @param amount The amount of tokens lent.
+     * @param data Arbitrary data structure, intended to contain user-defined parameters.
+     */
+    function flashLoan(
+        IERC3156FlashBorrower receiver,
+        address token,
+        uint256 amount,
+        bytes calldata data
+    ) external override returns (bool) {
+        address[] memory tokens = new address[](1);
+        tokens[0] = token;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = amount;
+        (uint256 route, ) = abi.decode(data, (uint256, bytes));
+
+        if (route == 0) {
+            routeDydx(address(receiver), tokens, amounts, route, data);
         } else {
-            routeProtocols(_tokens, _amounts, _route, data);
+            routeProtocols(address(receiver), tokens, amounts, route, data);
         }
+        return true;
+    }
+
+    function batchFlashLoan(
+        IERC3156BatchFlashBorrower receiver,
+        address[] calldata tokens,
+        uint256[] calldata amounts,
+        bytes calldata data
+    ) external override returns (bool) {
+        (uint256 route, ) = abi.decode(data, (uint256, bytes));
+
+        if (route == 0) {
+            routeDydx(address(receiver), tokens, amounts, route, data);
+        } else {
+            routeProtocols(address(receiver), tokens, amounts, route, data);
+        }
+        return true;
     }
 }
 
