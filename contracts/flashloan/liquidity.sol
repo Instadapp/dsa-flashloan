@@ -321,27 +321,6 @@ contract Setup {
 contract Helper is Setup {
     event LogChangedFee(uint256 newFee);
 
-    function encodeDsaCastData(
-        address dsa,
-        uint256 route,
-        address[] memory tokens,
-        uint256[] memory amounts,
-        bytes memory data
-    ) internal pure returns (bytes memory _data) {
-        CastData memory cd;
-        // (cd.dsaTargets, cd.dsaData) = abi.decode(data, (address[], bytes[]));
-        (cd.call) = abi.decode(data, (Call));
-        _data = abi.encode(
-            dsa,
-            route,
-            tokens,
-            amounts,
-            cd.call
-            // cd.dsaTargets,
-            // cd.dsaData
-        );
-    }
-
     function spell(address _target, bytes memory _data) internal {
         require(_target != address(0), 'target-invalid');
         assembly {
@@ -378,11 +357,32 @@ contract Helper is Setup {
 }
 
 contract Resolver is Helper {
+    function checkWeth(address[] memory tokens, uint256 _route)
+        internal
+        pure
+        returns (bool)
+    {
+        if (_route == 0) {
+            for (uint256 i = 0; i < tokens.length; i++) {
+                if (tokens[i] == ethAddr) {
+                    return true;
+                }
+            }
+        } else {
+            return true;
+        }
+        return false;
+    }
+
     function selectBorrow(
         address[] memory tokens,
         uint256[] memory amts,
         uint256 route
     ) internal {
+        bool isWeth = checkWeth(tokens, route);
+        if (isWeth) {
+            wethContract.withdraw(wethContract.balanceOf(address(this)));
+        }
         if (route == 0) {
             return;
         } else if (route == 1) {
@@ -483,6 +483,7 @@ contract Resolver is Helper {
                         uint256(-1)
                     );
                 spell(aaveConnect, _data);
+                // require(false, 'payed back the DAI');
             }
             bytes memory _dataOne =
                 abi.encodeWithSignature(
@@ -493,6 +494,10 @@ contract Resolver is Helper {
             spell(aaveConnect, _dataOne);
         } else {
             revert('route-not-found');
+        }
+        bool isWeth = checkWeth(tokens, route);
+        if (isWeth) {
+            wethContract.deposit.value(address(this).balance)();
         }
     }
 }
@@ -575,12 +580,14 @@ contract DydxFlashloaner is
         bytes calldata data
     ) external override returns (bytes32) {
         Call memory call = abi.decode(data, (Call));
+
         _call(call.to, call.value, call.data);
+
         return CALLBACK_SUCCESS;
     }
 
     function onBatchFlashLoan(
-        address sender,
+        address initiator,
         address[] calldata tokens,
         uint256[] calldata amounts,
         uint256[] calldata fees,
@@ -589,23 +596,6 @@ contract DydxFlashloaner is
         Call memory call = abi.decode(data, (Call));
         _call(call.to, call.value, call.data);
         return BATCH_CALLBACK_SUCCESS;
-    }
-
-    function checkWeth(address[] memory tokens, uint256 _route)
-        internal
-        pure
-        returns (bool)
-    {
-        if (_route == 0) {
-            for (uint256 i = 0; i < tokens.length; i++) {
-                if (tokens[i] == ethAddr) {
-                    return true;
-                }
-            }
-        } else {
-            return true;
-        }
-        return false;
     }
 
     function convertTo18(uint256 _amt, uint256 _dec)
@@ -618,6 +608,7 @@ contract DydxFlashloaner is
 
     function batch(Call[] memory calls) public payable {
         // external with ABIEncoderV2 Struct is not supported in solidity < 0.6.4
+
         for (uint256 i = 0; i < calls.length; i++) {
             _call(calls[i].to, calls[i].value, calls[i].data);
         }
@@ -656,10 +647,6 @@ contract DydxFlashloaner is
         ) = abi.decode(data, (address, address, address[], uint256[], bytes));
         (uint256 route, bytes memory call) =
             abi.decode(userData, (uint256, bytes));
-        bool isWeth = checkWeth(tokens, route);
-        if (isWeth) {
-            wethContract.withdraw(wethContract.balanceOf(address(this)));
-        }
 
         selectBorrow(tokens, amounts, route);
 
@@ -677,7 +664,7 @@ contract DydxFlashloaner is
                 }
             }
         }
-        //TODO: for ETH pull mechanism is not possible so we need to figure out a solution for that
+
         if (tokens.length == 1) {
             require(
                 IERC3156FlashBorrower(receiver).onFlashLoan(
@@ -686,7 +673,7 @@ contract DydxFlashloaner is
                     amounts[0],
                     /**fee*/
                     0,
-                    userData
+                    call
                 ) == CALLBACK_SUCCESS,
                 'Callback failed'
             );
@@ -700,7 +687,7 @@ contract DydxFlashloaner is
                     amounts,
                     /**fee*/
                     fees,
-                    userData
+                    call
                 ) == BATCH_CALLBACK_SUCCESS,
                 'Callback failed'
             );
@@ -708,7 +695,17 @@ contract DydxFlashloaner is
 
         if (address(receiver) != address(this)) {
             for (uint256 i = 0; i < _length; i++) {
-                if (tokens[i] != ethAddr) {
+                if (tokens[i] == ethAddr) {
+                    IERC20(wethAddr).safeTransferFrom(
+                        address(receiver),
+                        address(this),
+                        add(
+                            amounts[i],
+                            /** fees*/
+                            0
+                        )
+                    );
+                } else {
                     IERC20(tokens[i]).safeTransferFrom(
                         address(receiver),
                         address(this),
@@ -723,10 +720,6 @@ contract DydxFlashloaner is
         }
 
         selectPayback(tokens, route);
-
-        if (isWeth) {
-            wethContract.deposit.value(address(this).balance)();
-        }
     }
 
     function routeDydx(
@@ -861,7 +854,7 @@ contract DydxFlashloaner is
         uint256 wethMarketId = 0;
 
         uint256 _amount = wethContract.balanceOf(soloAddr); // CHECK9898 - does solo has all the ETH?
-        _amount = wmul(_amount, 999000000000000000); // 99.9% weth borrow
+        // _amount = wmul(_amount, 990000000000900000); // 99.9% weth borrow
         wethContract.approve(soloAddr, _amount + 2);
 
         Actions.ActionArgs[] memory operations = new Actions.ActionArgs[](3);
@@ -1002,6 +995,7 @@ contract DydxFlashloaner is
 contract InstaPool is DydxFlashloaner {
     constructor(uint256 _vaultId) public {
         wethContract.approve(wethAddr, uint256(-1));
+        //TODO: how to handle vault in this new structure
         vaultId = _vaultId;
         fee = 0;
     }

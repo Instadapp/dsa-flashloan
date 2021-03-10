@@ -4,7 +4,7 @@ import 'erc3156/contracts/interfaces/IERC3156FlashBorrower.sol';
 
 interface IERC3156BatchFlashBorrower is IERC3156FlashBorrower {
     function onBatchFlashLoan(
-        address sender,
+        address initiator,
         address[] calldata tokens,
         uint256[] calldata amounts,
         uint256[] calldata fees,
