@@ -21,9 +21,8 @@ contract Setup {
     TokenInterface daiContract = TokenInterface(daiAddr);
     ISoloMargin solo = ISoloMargin(soloAddr);
 
-    address public makerConnect = address(0x33c4f6d6c0A123AF5F1655EA5Fd730098d0aBD50);
-
-    uint public vaultId;
+    address public makerConnect;
+    uint256 public vaultId;
 
     modifier isMaster() {
         require(msg.sender == instaIndex.master(), "not-master");

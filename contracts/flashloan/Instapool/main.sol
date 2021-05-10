@@ -124,10 +124,12 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase, DSMath {
 
 contract InstaPoolV2 is DydxFlashloaner {
     constructor(
-        uint _vaultId
+        uint256 _vaultId,
+        address _makerConnect
     ) public {
         wethContract.approve(wethAddr, uint(-1));
         vaultId = _vaultId;
+        makerConnect = _makerConnect;
     }
 
     receive() external payable {}
