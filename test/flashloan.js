@@ -1,11 +1,15 @@
 const { ethers, network } = require("hardhat");
-const web3 = require("web3");
+const Web3 = require("web3");
 const chai = require("chai");
 const chaiPromise = require("chai-as-promised");
 const { solidity } = require("ethereum-waffle");
+const abis = require("./utils/abi");
 
 chai.use(chaiPromise);
 chai.use(solidity);
+
+const { expect } = chai;
+const web3 = new Web3();
 
 // External Address
 const MAKER_ADDR = "0x5ef30b9986345249bc32d8928B7ee64DE9435E39";
@@ -23,6 +27,8 @@ const TOKEN_ADDR = {
     holder: "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
   },
 };
+const MAX_VALUE =
+  "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
 // INSTA Address
 const M1_ADDR = "0xFE2390DAD597594439f218190fC2De40f9Cf1179";
@@ -109,7 +115,7 @@ async function deployM2Contract(flashLoanAddr, signer) {
 }
 
 async function addImplementation(m2Addr, signer) {
-  const sig = web3.utils
+  const sig = Web3.utils
     .keccak256("addImplementation(address,bytes4[])")
     .slice(0, 10);
 
@@ -122,15 +128,35 @@ async function addImplementation(m2Addr, signer) {
   await instaImplementationsContract.addImplementation(m2Addr, [sig]);
 }
 
-function createDSA(signer) {
+async function createDSA(signer) {
   const indexContract = new ethers.Contract(INDEX_ADDR, InstaIndexABI, signer);
 
-  return indexContract.build(signer.address, 2, signer.address);
+  const tx = await indexContract.build(signer.address, 2, signer.address);
+
+  await tx.wait();
+
+  return tx;
+}
+
+function encodeSpells(spells) {
+  const targets = spells.map((a) => a.connector);
+  const calldatas = spells.map((a) => {
+    const functionName = a.method;
+    // console.log(functionName)
+    const abi = abis[a.connector].find((b) => {
+      return b.name === functionName;
+    });
+    // console.log(functionName)
+    if (!abi) throw new Error("Couldn't find function");
+    return web3.eth.abi.encodeFunctionCall(abi, a.args);
+  });
+  return [targets, calldatas];
 }
 
 describe("Flashloan", function () {
   ////
   let master, acc;
+  let m2Impl, dsa;
 
   before(async () => {
     [acc] = await ethers.getSigners();
@@ -164,7 +190,7 @@ describe("Flashloan", function () {
       )
     );
 
-    // add 1eth in each
+    // add 1eth to instaPool
     await acc.sendTransaction({
       from: acc.address,
       to: instaPool.address,
@@ -173,11 +199,58 @@ describe("Flashloan", function () {
 
     await transferVault(vaultId, instaPool.address, master);
 
-    const m2Impl = await deployM2Contract(instaPool.address, master);
+    m2Impl = await deployM2Contract(instaPool.address, master);
     await addImplementation(m2Impl.address, master);
 
-    const dsa = await createDSA(master);
+    dsa = await createDSA(master);
   });
 
-  it("jethro", () => {});
+  it("flashCast with ETH", async () => {
+    const ETH_ADDR = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    const amt = ethers.utils.parseEther("1");
+    const promise = m2Impl.flashCast(ETH_ADDR, amt, [], [], master.address);
+
+    await expect(promise)
+      .to.emit(m2Impl, "LogFlashCast")
+      .withArgs(master.address, ETH_ADDR, amt);
+  });
+
+  it("flashCast with DAI < dydx has", async () => {
+    const amt = ethers.utils.parseEther("20000000");
+    const spells = {
+      connector: "compound",
+      method: "deposit",
+      args: [TOKEN_ADDR.USDC, MAX_VALUE, 0, 0],
+    };
+
+    const promise = m2Impl.flashCast(
+      TOKEN_ADDR.DAI.contract,
+      amt,
+      ...encodeSpells([spells]),
+      master.address
+    );
+
+    await expect(promise)
+      .to.emit(m2Impl, "LogFlashCast")
+      .withArgs(master.address, TOKEN_ADDR.DAI.contract, amt);
+  });
+
+  it("flashCast with DAI > dydx has", async () => {
+    const amt = ethers.utils.parseEther("40000000");
+    const spells = {
+      connector: "compound",
+      method: "deposit",
+      args: [TOKEN_ADDR.USDC, MAX_VALUE, 0, 0],
+    };
+    const promise = m2Impl.flashCast(
+      TOKEN_ADDR.DAI.contract,
+      amt,
+      ...encodeSpells([spells]),
+      master.address
+    );
+
+    await expect(promise)
+      .to.emit(m2Impl, "LogFlashCast")
+      .withArgs(master.address, TOKEN_ADDR.DAI.contract, amt);
+  });
 });
