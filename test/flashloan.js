@@ -1,4 +1,5 @@
 const { ethers, network } = require("hardhat");
+const web3 = require("web3");
 const chai = require("chai");
 const chaiPromise = require("chai-as-promised");
 const { solidity } = require("ethereum-waffle");
@@ -7,10 +8,21 @@ chai.use(chaiPromise);
 chai.use(solidity);
 
 // External Address
-const MAKER_ADDR = "0x839c2D3aDe63DF5b0b8F3E57D5e145057Ab41556";
-const USDC_ADDR = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
-const WETH_ADDR = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-const DAI_ADDR = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
+const MAKER_ADDR = "0x5ef30b9986345249bc32d8928B7ee64DE9435E39";
+const TOKEN_ADDR = {
+  USDC: {
+    contract: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+    holder: "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+  },
+  WETH: {
+    contract: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    holder: "0x2f0b23f53734252bda2277357e97e1517d6b042a",
+  },
+  DAI: {
+    contract: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
+    holder: "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+  },
+};
 
 // INSTA Address
 const M1_ADDR = "0xFE2390DAD597594439f218190fC2De40f9Cf1179";
@@ -26,13 +38,26 @@ const InstaIndexABI = [
   "function build(address _owner, uint accountVersion, address _origin) public returns(address _account)",
 ];
 
+async function impersonateAccounts(accounts) {
+  for (account of accounts) {
+    await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [account],
+    });
+  }
+}
+
 async function openVault(signer) {
   const maker = await ethers.getContractAt("ManagerLike", MAKER_ADDR, signer);
 
   const ilk = ethers.utils.formatBytes32String("ETH-A");
-  const vaultId = await maker.open(ilk, signer.address);
+  const vault = await maker.open(ilk, signer.address);
 
-  return vaultId;
+  await vault.wait();
+
+  const lastVaultId = await maker.last(signer.address);
+
+  return lastVaultId;
 }
 
 async function transferVault(vaultId, newAddr, signer) {
@@ -41,8 +66,14 @@ async function transferVault(vaultId, newAddr, signer) {
   await maker.give(vaultId, newAddr);
 }
 
-async function erc20Transfer(amt, contractAddr, toAddr) {
-  const contract = await ethers.getContractAt("IERC20", contractAddr);
+async function impersonateAndTransfer(amt, token, toAddr) {
+  const signer = await ethers.getSigner(token.holder);
+
+  const contract = await ethers.getContractAt(
+    "@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20",
+    token.contract,
+    signer
+  );
 
   await contract.transfer(toAddr, amt);
 }
@@ -72,7 +103,7 @@ async function deployM2Contract(flashLoanAddr, signer) {
   );
   const contract = await factory.deploy(INDEX_ADDR, M1_ADDR, flashLoanAddr);
 
-  await contract.deploy();
+  await contract.deployed();
 
   return contract;
 }
@@ -94,7 +125,7 @@ async function addImplementation(m2Addr, signer) {
 function createDSA(signer) {
   const indexContract = new ethers.Contract(INDEX_ADDR, InstaIndexABI, signer);
 
-  return indexContract.addImplementation(signer.address, 2, signer.address);
+  return indexContract.build(signer.address, 2, signer.address);
 }
 
 describe("Flashloan", function () {
@@ -105,17 +136,18 @@ describe("Flashloan", function () {
     [acc] = await ethers.getSigners();
 
     const IndexContract = await ethers.getContractAt(
-      "IndexInterface",
+      "contracts/flashloan/Instapool/interfaces.sol:IndexInterface",
       INDEX_ADDR
     );
 
     const masterAddr = await IndexContract.master();
-    await network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [masterAddr],
-    });
 
-    master = await ethers.getSigner(masterAddress);
+    impersonateAccounts([
+      masterAddr,
+      ...Object.values(TOKEN_ADDR).map((token) => token.holder),
+    ]);
+
+    master = await ethers.getSigner(masterAddr);
 
     const vaultId = await openVault(master);
     const makerConnector = await deployMaker(master);
@@ -126,12 +158,15 @@ describe("Flashloan", function () {
     );
 
     // Deposit some tokens
-    await erc20Transfer(10, USDC_ADDR, instaPool.address);
-    await erc20Transfer(10, WETH_ADDR, instaPool.address);
-    await erc20Transfer(10, DAI_ADDR, instaPool.address);
+    await Promise.all(
+      Object.values((token) =>
+        impersonateAndTransfer(10, token, instaPool.address)
+      )
+    );
 
-    await account.sendTransaction({
-      from: account.address,
+    // add 1eth in each
+    await acc.sendTransaction({
+      from: acc.address,
       to: instaPool.address,
       value: ethers.utils.parseEther("1").toHexString(),
     });

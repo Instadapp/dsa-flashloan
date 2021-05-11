@@ -23,6 +23,9 @@ task("accounts", "Prints the list of accounts", async () => {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
+  mocha: {
+    timeout: 50000,
+  },
   solidity: {
     compilers: [{ version: "0.6.2" }, { version: "0.7.0" }],
   },
