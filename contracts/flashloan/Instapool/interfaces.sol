@@ -9,14 +9,12 @@ interface DSAInterface {
         string[] calldata _targetNames,
         bytes[] calldata _datas,
         address _origin
-    )
-    external
+    ) external;
 }
 
 interface IndexInterface {
-  function master() external view returns (address);
+    function master() external view returns (address);
 }
-
 
 interface ListInterface {
     function accountID(address) external view returns (uint64);
@@ -24,12 +22,22 @@ interface ListInterface {
 
 interface TokenInterface {
     function approve(address, uint256) external;
-    function transfer(address, uint) external;
-    function transferFrom(address, address, uint) external;
+
+    function transfer(address, uint256) external;
+
+    function transferFrom(
+        address,
+        address,
+        uint256
+    ) external;
+
     function deposit() external payable;
-    function withdraw(uint) external;
-    function balanceOf(address) external view returns (uint);
-    function decimals() external view returns (uint);
+
+    function withdraw(uint256) external;
+
+    function balanceOf(address) external view returns (uint256);
+
+    function decimals() external view returns (uint256);
 }
 
 interface Account {
@@ -108,7 +116,6 @@ interface Types {
     }
 }
 
-
 interface ISoloMargin {
     struct OperatorArg {
         address operator;
@@ -121,7 +128,6 @@ interface ISoloMargin {
         returns (address);
 
     function getNumMarkets() external view returns (uint256);
-
 
     function operate(
         Account.Info[] calldata accounts,
@@ -141,7 +147,6 @@ interface ISoloMargin {
  * Interface that Callees for Solo must implement in order to ingest data.
  */
 interface ICallee {
-
     // ============ Public Functions ============
 
     /**
@@ -155,6 +160,5 @@ interface ICallee {
         address sender,
         Account.Info calldata accountInfo,
         bytes calldata data
-    )
-        external;
+    ) external;
 }
