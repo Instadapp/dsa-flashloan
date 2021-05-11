@@ -1,5 +1,5 @@
 module.exports = {
-  compound: [
+  "COMPOUND-A": [
     {
       anonymous: false,
       inputs: [

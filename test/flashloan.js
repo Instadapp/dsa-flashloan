@@ -42,6 +42,7 @@ const instaImplementationABI = [
 
 const InstaIndexABI = [
   "function build(address _owner, uint accountVersion, address _origin) public returns(address _account)",
+  "event LogAccountCreated(address sender, address indexed owner, address indexed account, address indexed origin)",
 ];
 
 async function impersonateAccounts(accounts) {
@@ -133,9 +134,9 @@ async function createDSA(signer) {
 
   const tx = await indexContract.build(signer.address, 2, signer.address);
 
-  await tx.wait();
+  const addr = (await tx.wait()).events[1].args.account;
 
-  return tx;
+  return addr;
 }
 
 function encodeSpells(spells) {
@@ -156,7 +157,7 @@ function encodeSpells(spells) {
 describe("Flashloan", function () {
   ////
   let master, acc;
-  let m2Impl, dsa;
+  let m2Impl, dsaAddr;
 
   before(async () => {
     [acc] = await ethers.getSigners();
@@ -186,15 +187,15 @@ describe("Flashloan", function () {
     // Deposit some tokens
     await Promise.all(
       Object.values((token) =>
-        impersonateAndTransfer(10, token, instaPool.address)
+        impersonateAndTransfer(1000, token, instaPool.address)
       )
     );
 
-    // add 1eth to instaPool
+    // add 5eth to instaPool
     await acc.sendTransaction({
       from: acc.address,
       to: instaPool.address,
-      value: ethers.utils.parseEther("1").toHexString(),
+      value: ethers.utils.parseEther("5").toHexString(),
     });
 
     await transferVault(vaultId, instaPool.address, master);
@@ -202,13 +203,29 @@ describe("Flashloan", function () {
     m2Impl = await deployM2Contract(instaPool.address, master);
     await addImplementation(m2Impl.address, master);
 
-    dsa = await createDSA(master);
+    dsaAddr = await createDSA(master);
+
+    m2Impl = await ethers.getContractAt(
+      "InstaImplementationM2",
+      dsaAddr,
+      master
+    );
   });
 
   it("flashCast with ETH", async () => {
     const ETH_ADDR = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    const spells = {
+      connector: "COMPOUND-A",
+      method: "deposit",
+      args: ["ETH-A", MAX_VALUE, 0, 0],
+    };
     const amt = ethers.utils.parseEther("1");
-    const promise = m2Impl.flashCast(ETH_ADDR, amt, [], [], master.address);
+    const promise = m2Impl.flashCast(
+      ETH_ADDR,
+      amt,
+      ...encodeSpells([spells]),
+      master.address
+    );
 
     await expect(promise)
       .to.emit(m2Impl, "LogFlashCast")
@@ -218,9 +235,9 @@ describe("Flashloan", function () {
   it("flashCast with DAI < dydx has", async () => {
     const amt = ethers.utils.parseEther("20000000");
     const spells = {
-      connector: "compound",
+      connector: "COMPOUND-A",
       method: "deposit",
-      args: [TOKEN_ADDR.USDC, MAX_VALUE, 0, 0],
+      args: [TOKEN_ADDR.DAI, MAX_VALUE, 0, 0],
     };
 
     const promise = m2Impl.flashCast(
@@ -238,9 +255,9 @@ describe("Flashloan", function () {
   it("flashCast with DAI > dydx has", async () => {
     const amt = ethers.utils.parseEther("40000000");
     const spells = {
-      connector: "compound",
+      connector: "COMPOUND-A",
       method: "deposit",
-      args: [TOKEN_ADDR.USDC, MAX_VALUE, 0, 0],
+      args: [TOKEN_ADDR.DAI, MAX_VALUE, 0, 0],
     };
     const promise = m2Impl.flashCast(
       TOKEN_ADDR.DAI.contract,
