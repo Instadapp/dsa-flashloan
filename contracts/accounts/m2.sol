@@ -3,6 +3,8 @@ pragma experimental ABIEncoderV2;
 
 import { Variables } from "./variables.sol";
 
+
+
 interface TokenInterface {
     function transfer(address, uint) external returns (bool);
     function balanceOf(address) external view returns (uint);
@@ -29,9 +31,9 @@ interface FlashloanInterface {
 contract Constants is Variables {
     // InstaIndex Address.
     address internal immutable instaIndex;
-    // Connnectors Address.
+    // Connectors Address.
     address public immutable connectorsM1;
-    // Connnectors Address.
+    // Instapool Address.
     address public immutable flashloan;
 
     constructor(address _instaIndex, address _connectors, address _flashloan) {
@@ -109,7 +111,7 @@ contract InstaImplementationM2 is Constants {
     )
     external
     payable 
-    {   
+    {      
         uint256 _length = _targetNames.length;
         require(_auth[sender], "2: not-an-owner");
         require(msg.sender == flashloan, "2: not-flashloan-contract");
@@ -121,7 +123,7 @@ contract InstaImplementationM2 is Constants {
 
         (bool isOk, address[] memory _targets) = ConnectorsInterface(connectorsM1).isConnectors(_targetNames);
 
-        require(isOk, "1: not-connector");
+        require(isOk, "2: not-connector");
 
         for (uint i = 0; i < _length; i++) {
             bytes memory response = spell(_targets[i], _datas[i]);
@@ -135,7 +137,7 @@ contract InstaImplementationM2 is Constants {
         } else {
             uint256 tokenBalance = TokenInterface(_token).balanceOf(address(this));
             uint256 transferAmt = tokenBalance > _amount ? _amount : tokenBalance;
-            require(TokenInterface(_token).transfer(flashloan, transferAmt), "flashloan-transfer-failed"); // TODO: Try catch: If fails then transfer 0.00000001% less?
+            require(TokenInterface(_token).transfer(flashloan, transferAmt), "2: flashloan-transfer-failed"); // TODO: Try catch: If fails then transfer 0.00000001% less?
         }
 
         emit LogCast(
@@ -156,6 +158,7 @@ contract InstaImplementationM2 is Constants {
         bytes[] calldata _datas,
         address _origin
     ) external {
+        require(_auth[msg.sender], "2: not-an-owner");
         bytes memory data = abi.encodeWithSelector(
             this.flashCallback.selector,
             msg.sender,

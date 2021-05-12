@@ -113,7 +113,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         IERC20 _tokenContract = IERC20(_token);
         uint256 _marketId = _getMarketIdFromTokenAddress(soloAddr, _token);
 
-        _tokenContract.approve(soloAddr, _amount + 2); // TODO - give infinity allowance??
+        _tokenContract.approve(soloAddr, _amount + 2);
 
         Actions.ActionArgs[] memory operations = new Actions.ActionArgs[](3);
 
@@ -162,7 +162,7 @@ contract InstaPoolV2 is DydxFlashloaner {
         uint256 _vaultId,
         address _makerConnect
     ) public {
-        wethContract.approve(wethAddr, uint(-1));
+        wethContract.approve(wethAddr, uint256(-1));
         vaultId = _vaultId;
         makerConnect = _makerConnect;
     }
