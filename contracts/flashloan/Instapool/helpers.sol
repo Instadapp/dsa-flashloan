@@ -40,7 +40,7 @@ contract Setup {
     * @dev Converts the encoded data to sig.
     * @param _data encoded data
     */
-    function convertDataToSig(bytes memory _data) public pure returns(bytes4 sig) {
+    function convertDataToSig(bytes memory _data) internal pure returns(bytes4 sig) {
         assembly {
             sig := mload(add(_data, 4))
         } 
@@ -66,12 +66,10 @@ contract Setup {
 
     struct CastData {
         address dsa;
-        address sender;
         uint route;
         address token;
         uint256 amount;
-        string[] dsaTargets;
-        bytes[] dsaData;
+        bytes callData;
     }
 }
 
@@ -84,15 +82,10 @@ contract Helper is Setup, DSMath {
         address dsa,
         uint route,
         address token,
-        uint amount,
+        uint256 amount,
         bytes memory data
     ) internal pure returns (bytes memory _data) {
-        CastData memory cd;
-        (cd.dsaTargets, cd.dsaData, cd.sender) = abi.decode(
-            data,
-            (string[], bytes[], address)
-        );
-        _data = abi.encode(dsa,  cd.sender, route, token, amount, cd.dsaTargets, cd.dsaData);
+        _data = abi.encode(dsa, route, token, amount, data);
     }
 
     function spell(address _target, bytes memory _data) internal {

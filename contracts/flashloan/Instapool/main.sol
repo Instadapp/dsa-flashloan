@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import { Helper } from "./helpers.sol";
 
 import { 
@@ -62,12 +63,12 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         require(sender == address(this), "not-same-sender");
         require(msg.sender == soloAddr, "not-solo-dydx-sender");
         CastData memory cd;
-        (cd.dsa, cd.sender, cd.route, cd.token, cd.amount, cd.dsaTargets, cd.dsaData) = abi.decode(
+        (cd.dsa, cd.route, cd.token, cd.amount, cd.callData) = abi.decode(
             data,
-            (address, address, uint256, address, uint256, string[], bytes[])
+            (address, uint256, address, uint256, bytes)
         );
 
-        bool isWeth = cd.route == 1 || cd.token == ethAddr; // TODO
+        bool isWeth = cd.route == 1 || cd.token == ethAddr;
         if (isWeth) {
             wethContract.withdraw(wethContract.balanceOf(address(this)));
         }
@@ -80,7 +81,8 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             IERC20(cd.token).safeTransfer(cd.dsa, cd.amount);
         }
 
-        DSAInterface(cd.dsa).flashCallback(cd.sender, cd.token, cd.amount, cd.dsaTargets, cd.dsaData, address(this));
+
+        Address.functionCall(cd.dsa, cd.callData, "DSA-flashloan-fallback-failed");
 
         selectPayback(cd.route);
 
@@ -150,7 +152,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         address token,	
         uint256 amount,	
         bytes calldata data	
-    ) external isDSA {	
+    ) external isDSA isWhitelisted(data) {	
         routeDydx(token, amount, data);	
     }
 }
