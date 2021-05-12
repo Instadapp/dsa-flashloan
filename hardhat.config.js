@@ -2,7 +2,7 @@ require("dotenv").config();
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
-require("@nomiclabs/hardhat-web3")
+require("@nomiclabs/hardhat-web3");
 
 if (!process.env.ALCHEMY_URL) {
   throw new Error("Set ALCHEMY_URL environment variable in .env");
@@ -27,7 +27,7 @@ task("accounts", "Prints the list of accounts", async () => {
  */
 module.exports = {
   mocha: {
-    timeout: 50000,
+    timeout: 100000,
   },
   solidity: {
     compilers: [{ version: "0.6.2" }, { version: "0.7.0" }],
