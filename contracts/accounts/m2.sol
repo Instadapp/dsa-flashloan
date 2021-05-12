@@ -25,6 +25,10 @@ interface FlashloanInterface {
     ) external;
 }
 
+interface IndexInterface {
+  function master() external view returns (address);
+}
+
 contract Constants is Variables {
     // InstaIndex Address.
     address internal immutable instaIndex;
@@ -41,6 +45,8 @@ contract Constants is Variables {
 }
 
 contract InstaImplementationM2 is Constants {
+
+    mapping (bytes4 => bool) whitelistedSigs;
 
     constructor(address _instaIndex, address _connectors, address _flashloan) Constants(_instaIndex, _connectors, _flashloan) {}
 
@@ -67,6 +73,55 @@ contract InstaImplementationM2 is Constants {
     );
 
     receive() external payable {}
+
+
+    /**
+    * @dev Converts the encoded data to sig.
+    * @param _data encoded data
+    */
+    function convertDataToSig(bytes memory _data) public pure returns(bytes4 sig) {
+        assembly {
+            sig := mload(add(_data, 4))
+        } 
+    }
+
+    /**
+    * @dev Check if sig is whitelisted
+    * @param _sig bytes4
+    */
+    function checkWhitelisted(bytes4 _sig) public view returns(bool) {
+        return whitelistedSigs[_sig];
+    }
+    
+
+    /**
+    * @dev Whitelists / Blacklists a given sig
+    * @param _sigs list of sigs
+    * @param _whitelist list of bools indicate whitelist/blacklist
+    */
+
+    function whitelistSigs(bytes4[] memory _sigs, bool[] memory _whitelist) public {
+        require(_sigs.length == _whitelist.length, "arr-lengths-unequal");
+        for (uint i = 0; i < _sigs.length; i++) {
+            whitelistedSigs[_sigs[i]] = _whitelist[i];
+        }
+    }
+
+    /**
+    * @dev modifier to check if data's sig is whitelisted
+    */
+    modifier isWhitelisted(bytes memory _data) {
+        require(checkWhitelisted(convertDataToSig(_data)), "sig-not-whitelisted");
+        _;
+    }
+    
+    /**
+    * @dev modifier to check if msg.sender is master 
+    */
+    modifier isMaster {
+        require(msg.sender == IndexInterface(instaIndex).master(), "not-master");
+        _;
+    }
 
      /**
      * @dev Delegate the calls to Connector.
