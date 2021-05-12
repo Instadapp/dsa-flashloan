@@ -25,6 +25,7 @@ interface FlashloanInterface {
     ) external;
 }
 
+
 contract Constants is Variables {
     // InstaIndex Address.
     address internal immutable instaIndex;
@@ -155,7 +156,15 @@ contract InstaImplementationM2 is Constants {
         bytes[] calldata _datas,
         address _origin
     ) external {
-        bytes memory data = abi.encode(_targetNames, _datas, msg.sender);
+        bytes memory data = abi.encodeWithSelector(
+            this.flashCallback.selector,
+            _token,
+            _amount,
+            _targetNames,
+            _datas,
+            msg.sender,
+            flashloan
+        );
 
         FlashloanInterface(flashloan).initiateFlashLoan(_token, _amount, data);
 

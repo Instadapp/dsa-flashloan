@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import { Helper } from "./helpers.sol";
 
 import { 
@@ -22,6 +23,7 @@ import { DydxFlashloanBase } from "./dydxBase.sol";
 contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
     using SafeERC20 for IERC20;
 
+
     event LogFlashLoan(
         address indexed dsa,
         address token,
@@ -29,6 +31,30 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         uint route
     );
 
+
+    /**
+    * @dev Check if sig is whitelisted
+    * @param _sig bytes4
+    */
+    function checkWhitelisted(bytes4 _sig) public view returns(bool) {
+        return whitelistedSigs[_sig];
+    }
+    
+
+    /**
+    * @dev Whitelists / Blacklists a given sig
+    * @param _sigs list of sigs
+    * @param _whitelist list of bools indicate whitelist/blacklist
+    */
+
+    function whitelistSigs(bytes4[] memory _sigs, bool[] memory _whitelist) public {
+        require(_sigs.length == _whitelist.length, "arr-lengths-unequal");
+        for (uint i = 0; i < _sigs.length; i++) {
+            whitelistedSigs[_sigs[i]] = _whitelist[i];
+        }
+    }
+
+    
     function callFunction(
         address sender,
         Account.Info memory account,
@@ -37,12 +63,12 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         require(sender == address(this), "not-same-sender");
         require(msg.sender == soloAddr, "not-solo-dydx-sender");
         CastData memory cd;
-        (cd.dsa, cd.sender, cd.route, cd.token, cd.amount, cd.dsaTargets, cd.dsaData) = abi.decode(
+        (cd.dsa, cd.route, cd.token, cd.amount, cd.callData) = abi.decode(
             data,
-            (address, address, uint256, address, uint256, string[], bytes[])
+            (address, uint256, address, uint256, bytes)
         );
 
-        bool isWeth = cd.route == 1 || cd.token == ethAddr; // TODO
+        bool isWeth = cd.route == 1 || cd.token == ethAddr;
         if (isWeth) {
             wethContract.withdraw(wethContract.balanceOf(address(this)));
         }
@@ -55,7 +81,8 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             IERC20(cd.token).safeTransfer(cd.dsa, cd.amount);
         }
 
-        DSAInterface(cd.dsa).flashCallback(cd.sender, cd.token, cd.amount, cd.dsaTargets, cd.dsaData, address(this));
+
+        Address.functionCall(cd.dsa, cd.callData, "DSA-flashloan-fallback-failed");
 
         selectPayback(cd.route);
 
@@ -125,7 +152,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         address token,	
         uint256 amount,	
         bytes calldata data	
-    ) external isDSA {	
+    ) external isDSA isWhitelisted(data) {	
         routeDydx(token, amount, data);	
     }
 }

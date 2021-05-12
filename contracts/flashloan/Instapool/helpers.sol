@@ -19,16 +19,38 @@ contract Setup {
     address public constant wethAddr = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant ethAddr = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant daiAddr = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    
     TokenInterface wethContract = TokenInterface(wethAddr);
     TokenInterface daiContract = TokenInterface(daiAddr);
     ISoloMargin solo = ISoloMargin(soloAddr);
 
     address public makerConnect;
     uint256 public vaultId;
+    mapping (bytes4 => bool) whitelistedSigs;
 
+
+    /**
+    * @dev modifier to check if msg.sender is a master 
+    */
     modifier isMaster() {
         require(msg.sender == instaIndex.master(), "not-master");
+        _;
+    }
+
+    /**
+    * @dev Converts the encoded data to sig.
+    * @param _data encoded data
+    */
+    function convertDataToSig(bytes memory _data) internal pure returns(bytes4 sig) {
+        assembly {
+            sig := mload(add(_data, 4))
+        } 
+    }
+
+    /**
+    * @dev modifier to check if data's sig is whitelisted
+    */
+    modifier isWhitelisted(bytes memory _data) {
+        require(whitelistedSigs[convertDataToSig(_data)], "sig-not-whitelisted");
         _;
     }
 
@@ -44,12 +66,10 @@ contract Setup {
 
     struct CastData {
         address dsa;
-        address sender;
         uint route;
         address token;
         uint256 amount;
-        string[] dsaTargets;
-        bytes[] dsaData;
+        bytes callData;
     }
 }
 
@@ -62,15 +82,10 @@ contract Helper is Setup, DSMath {
         address dsa,
         uint route,
         address token,
-        uint amount,
+        uint256 amount,
         bytes memory data
     ) internal pure returns (bytes memory _data) {
-        CastData memory cd;
-        (cd.dsaTargets, cd.dsaData, cd.sender) = abi.decode(
-            data,
-            (string[], bytes[], address)
-        );
-        _data = abi.encode(dsa,  cd.sender, route, token, amount, cd.dsaTargets, cd.dsaData);
+        _data = abi.encode(dsa, route, token, amount, data);
     }
 
     function spell(address _target, bytes memory _data) internal {
