@@ -87,7 +87,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         selectPayback(cd.route);
 
         if (isWeth) {
-            wethContract.deposit{value: address(this).balance}();
+            wethContract.deposit.value(address(this).balance)();
         }
     }
 
@@ -124,7 +124,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         Account.Info[] memory accountInfos = new Account.Info[](1);
         accountInfos[0] = _getAccountInfo();
 
-        uint256 initailBal = add(_tokenContract.balanceOf(address(this)), address(this).balance);
+        uint256 initialBal = add(_tokenContract.balanceOf(address(this)), address(this).balance);
 
         solo.operate(accountInfos, operations);
 
@@ -132,11 +132,11 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
 
         if (_token == wethAddr) {
             uint256 _dif = wmul(_amount, 10000000000); // Taking margin of 0.00000001%
-            require(sub(initailBal, finalBal) <= _dif, "eth-amount-paid-less");
+            require(sub(initialBal, finalBal) <= _dif, "eth-amount-paid-less");
         } else {
             uint256 _decimals = TokenInterface(token).decimals();
             uint _dif = wmul(convertTo18(_amount, _decimals), 10000000000); // Taking margin of 0.00000001%
-            require(convertTo18(sub(initailBal, finalBal), _decimals) <= _dif, "token-amount-paid-less");
+            require(convertTo18(sub(initialBal, finalBal), _decimals) <= _dif, "token-amount-paid-less");
         }
             
         emit LogFlashLoan(
