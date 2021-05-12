@@ -38,11 +38,12 @@ contract Setup {
 
     /**
     * @dev Converts the encoded data to sig.
-    * @param _data encoded data
+    * @param data encoded data
     */
-    function convertDataToSig(bytes memory _data) internal pure returns(bytes4 sig) {
+    function convertDataToSig(bytes memory data) internal pure returns(bytes4 sig) {
+        bytes memory _data = data;
         assembly {
-            sig := mload(add(_data, 4))
+            sig := mload(add(_data, 32))
         } 
     }
 
