@@ -1,5 +1,6 @@
-const { ethers, network } = require("hardhat");
-const Web3 = require("web3");
+const hre = require("hardhat");
+const { expect } = require("chai");
+const { ethers, network, waffle, web3 } = hre;
 const chai = require("chai");
 const chaiPromise = require("chai-as-promised");
 const { solidity } = require("ethereum-waffle");
@@ -8,23 +9,20 @@ const abis = require("./utils/abi");
 chai.use(chaiPromise);
 chai.use(solidity);
 
-const { expect } = chai;
-const web3 = new Web3();
-
 // External Address
 const MAKER_ADDR = "0x5ef30b9986345249bc32d8928B7ee64DE9435E39";
 const TOKEN_ADDR = {
   USDC: {
     contract: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-    holder: "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+    holder: "0xbe0eb53f46cd790cd13851d5eff43d12404d33e8",
   },
   WETH: {
     contract: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-    holder: "0x2f0b23f53734252bda2277357e97e1517d6b042a",
+    holder: "0xc564ee9f21ed8a2d8e7e76c085740d5e4c5fafbe",
   },
   DAI: {
     contract: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
-    holder: "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+    holder: "0xf977814e90da44bfa03b6295a0616a897441acec",
   },
 };
 const MAX_VALUE =
@@ -74,6 +72,7 @@ async function transferVault(vaultId, newAddr, signer) {
 }
 
 async function impersonateAndTransfer(amt, token, toAddr) {
+  console.log({amt, token, toAddr})
   const signer = await ethers.getSigner(token.holder);
 
   const contract = await ethers.getContractAt(
@@ -116,8 +115,12 @@ async function deployM2Contract(flashLoanAddr, signer) {
 }
 
 async function addImplementation(m2Addr, signer) {
-  const sig = Web3.utils
-    .keccak256("addImplementation(address,bytes4[])")
+    const sig1 = Web3.utils
+    .keccak256("flashCast(address,uint256,string[],bytes[],address)")
+    .slice(0, 10);
+
+    const sig2 = Web3.utils
+    .keccak256("flashCallback(address,address,uint256,string[],bytes[],address)")
     .slice(0, 10);
 
   const instaImplementationsContract = new ethers.Contract(
@@ -126,14 +129,14 @@ async function addImplementation(m2Addr, signer) {
     signer
   );
 
-  await instaImplementationsContract.addImplementation(m2Addr, [sig]);
+  await instaImplementationsContract.addImplementation(m2Addr, [sig1, sig2]);
 }
 
 async function createDSA(signer) {
   const indexContract = new ethers.Contract(INDEX_ADDR, InstaIndexABI, signer);
 
   const tx = await indexContract.build(signer.address, 2, signer.address);
-
+  console.log("in")
   const addr = (await tx.wait()).events[1].args.account;
 
   return addr;
@@ -160,8 +163,8 @@ describe("Flashloan", function () {
   let m2Impl, dsaAddr;
 
   before(async () => {
-    [acc] = await ethers.getSigners();
-
+    const [wallet1] = await ethers.getSigners();
+    acc = wallet1
     const IndexContract = await ethers.getContractAt(
       "contracts/flashloan/Instapool/interfaces.sol:IndexInterface",
       INDEX_ADDR
@@ -183,13 +186,18 @@ describe("Flashloan", function () {
       makerConnector.address,
       master
     );
+ 
+    // Deposit some tokens // TODO
+    // await Promise.all(
+    //   Object.values(TOKEN_ADDR).forEach(token =>
+    //     impersonateAndTransfer(1000, token, instaPool.address)
+    //   )
+    // );
 
-    // Deposit some tokens
-    await Promise.all(
-      Object.values((token) =>
-        impersonateAndTransfer(1000, token, instaPool.address)
-      )
-    );
+    await impersonateAndTransfer(1000, TOKEN_ADDR.DAI, instaPool.address)
+    await impersonateAndTransfer(1000, TOKEN_ADDR.USDC, instaPool.address)
+    await impersonateAndTransfer(1000, TOKEN_ADDR.WETH, instaPool.address)
+
 
     // add 5eth to instaPool
     await acc.sendTransaction({
@@ -213,17 +221,25 @@ describe("Flashloan", function () {
   });
 
   it("flashCast with ETH", async () => {
-    const ETH_ADDR = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-    const spells = {
-      connector: "COMPOUND-A",
-      method: "deposit",
-      args: ["ETH-A", MAX_VALUE, 0, 0],
-    };
+    const ETH_ADDR = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+    const spells = [
+      {
+        connector: "COMPOUND-A",
+        method: "deposit",
+        args: ["ETH-A", MAX_VALUE, 0, 1212],
+      },
+      {
+        connector: "COMPOUND-A",
+        method: "withdraw",
+        args: ["ETH-A", 0, 1212, 0],
+      }
+    ];
+    
     const amt = ethers.utils.parseEther("1");
     const promise = m2Impl.flashCast(
       ETH_ADDR,
       amt,
-      ...encodeSpells([spells]),
+      ...encodeSpells(spells),
       master.address
     );
 
@@ -234,16 +250,23 @@ describe("Flashloan", function () {
 
   it("flashCast with DAI < dydx has", async () => {
     const amt = ethers.utils.parseEther("20000000");
-    const spells = {
-      connector: "COMPOUND-A",
-      method: "deposit",
-      args: [TOKEN_ADDR.DAI, MAX_VALUE, 0, 0],
-    };
+    const spells = [
+      {
+        connector: "COMPOUND-A",
+        method: "deposit",
+        args: ["DAI-A", MAX_VALUE, 0, 12122],
+      },
+      {
+        connector: "COMPOUND-A",
+        method: "withdraw",
+        args: ["DAI-A", 0, 12122, 0],
+      }
+    ];
 
     const promise = m2Impl.flashCast(
       TOKEN_ADDR.DAI.contract,
       amt,
-      ...encodeSpells([spells]),
+      ...encodeSpells(spells),
       master.address
     );
 
@@ -254,15 +277,22 @@ describe("Flashloan", function () {
 
   it("flashCast with DAI > dydx has", async () => {
     const amt = ethers.utils.parseEther("40000000");
-    const spells = {
-      connector: "COMPOUND-A",
-      method: "deposit",
-      args: [TOKEN_ADDR.DAI, MAX_VALUE, 0, 0],
-    };
+    const spells = [
+      {
+        connector: "COMPOUND-A",
+        method: "deposit",
+        args: ["DAI-A", MAX_VALUE, 0, 12122],
+      },
+      {
+        connector: "COMPOUND-A",
+        method: "withdraw",
+        args: ["DAI-A", 0, 12122, 0],
+      }
+    ];
     const promise = m2Impl.flashCast(
       TOKEN_ADDR.DAI.contract,
       amt,
-      ...encodeSpells([spells]),
+      ...encodeSpells(spells),
       master.address
     );
 

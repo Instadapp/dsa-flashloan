@@ -77,6 +77,8 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase, DSMath {
                 route = 1;
                 _amount = dydxWEthAmt;
                 _token = wethAddr;
+            } else {
+                _token = token;
             }
         } else {
             _token = token == ethAddr ? wethAddr : token;

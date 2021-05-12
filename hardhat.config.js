@@ -1,5 +1,8 @@
 require("dotenv").config();
 require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-ethers");
+require("@nomiclabs/hardhat-waffle");
+require("@nomiclabs/hardhat-web3")
 
 if (!process.env.ALCHEMY_URL) {
   throw new Error("Set ALCHEMY_URL environment variable in .env");
@@ -33,7 +36,7 @@ module.exports = {
     hardhat: {
       forking: {
         url: alchemyUrl,
-        blockNumber: 12409149,
+        blockNumber: 12418695,
       },
     },
   },

@@ -1,5 +1,4 @@
 pragma solidity ^0.6.0;
-
 interface TokenInterface {
     function approve(address, uint) external;
     function transfer(address, uint) external;
@@ -125,8 +124,7 @@ contract Helpers is DSMath {
     }
 
     function getAddressWETH() internal pure returns (address) {
-        // return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // mainnet
-        return 0xd0A1E359811322d97991E03f863a0C30C2cF029C; // kovan
+        return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // mainnet
     }
 
     function isETH(address token) internal pure returns(bool) {
@@ -140,24 +138,21 @@ contract MakerMCDAddresses is Helpers {
      * @dev Return Maker MCD Manager Address.
     */
     function getMcdManager() internal pure returns (address) {
-        // return 0x5ef30b9986345249bc32d8928B7ee64DE9435E39; //mainnet
-        return 0x1476483dD8C35F25e568113C5f70249D3976ba21; // kovan
+        return 0x5ef30b9986345249bc32d8928B7ee64DE9435E39; //mainnet
     }
 
     /**
      * @dev Return Maker MCD DAI_Join Address.
     */
     function getMcdDaiJoin() internal pure returns (address) {
-        // return 0x9759A6Ac90977b93B58547b4A71c78317f391A28; // mainnet
-        return 0x5AA71a3ae1C0bd6ac27A1f28e1415fFFB6F15B8c; // kovan
+        return 0x9759A6Ac90977b93B58547b4A71c78317f391A28; // mainnet
     }
 
     /**
      * @dev Return Maker MCD Jug Address.
     */
     function getMcdJug() internal pure returns (address) {
-        // return 0x19c0976f590D67707E62397C87829d896Dc0f1F1; // mainnet
-        return 0xcbB7718c9F39d05aEEDE1c472ca8Bf804b2f1EaD; // kovan
+        return 0x19c0976f590D67707E62397C87829d896Dc0f1F1; // mainnet
     }
 }
 
@@ -281,7 +276,6 @@ contract BasicResolver is MakerHelpers {
         );
 
         emit LogDeposit(vault, ilk, _amt);
-
     }
 
     /**
