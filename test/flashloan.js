@@ -249,10 +249,7 @@ describe("Flashloan", function () {
       },
     ];
 
-
-    // TODO: prime number, fails without a reason
-    // const amt = ethers.utils.parseEther("47599");
-    const amt = "45547657732544334267823"
+    const amt = "45547657732544334267823";
     const promise = m2Impl.flashCast(
       ETH_ADDR,
       amt,
@@ -266,8 +263,7 @@ describe("Flashloan", function () {
   });
 
   it("flashCast with DAI < dydx has", async () => {
-    // TODO: (fix) dydx has more than 20M DAI, yet it fails with a prime number
-    const amt = ethers.utils.parseEther("28657");
+    const amt = "25657657732544334267823451";
     const spells = [
       {
         connector: "COMPOUND-A",
@@ -294,7 +290,7 @@ describe("Flashloan", function () {
   });
 
   it("flashCast with DAI > dydx has", async () => {
-    const amt = ethers.utils.parseEther("39916801");
+    const amt = "45657657732544334267823451";
     const spells = [
       {
         connector: "COMPOUND-A",
