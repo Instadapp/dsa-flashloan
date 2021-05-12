@@ -72,7 +72,7 @@ async function transferVault(vaultId, newAddr, signer) {
 }
 
 async function impersonateAndTransfer(amt, token, toAddr) {
-  console.log({amt, token, toAddr})
+  console.log({ amt, token, toAddr });
   const signer = await ethers.getSigner(token.holder);
 
   const contract = await ethers.getContractAt(
@@ -115,12 +115,14 @@ async function deployM2Contract(flashLoanAddr, signer) {
 }
 
 async function addImplementation(m2Addr, signer) {
-    const sig1 = Web3.utils
+  const sig1 = Web3.utils
     .keccak256("flashCast(address,uint256,string[],bytes[],address)")
     .slice(0, 10);
 
-    const sig2 = Web3.utils
-    .keccak256("flashCallback(address,address,uint256,string[],bytes[],address)")
+  const sig2 = Web3.utils
+    .keccak256(
+      "flashCallback(address,address,uint256,string[],bytes[],address)"
+    )
     .slice(0, 10);
 
   const instaImplementationsContract = new ethers.Contract(
@@ -136,7 +138,7 @@ async function createDSA(signer) {
   const indexContract = new ethers.Contract(INDEX_ADDR, InstaIndexABI, signer);
 
   const tx = await indexContract.build(signer.address, 2, signer.address);
-  console.log("in")
+  console.log("in");
   const addr = (await tx.wait()).events[1].args.account;
 
   return addr;
@@ -164,7 +166,7 @@ describe("Flashloan", function () {
 
   before(async () => {
     const [wallet1] = await ethers.getSigners();
-    acc = wallet1
+    acc = wallet1;
     const IndexContract = await ethers.getContractAt(
       "contracts/flashloan/Instapool/interfaces.sol:IndexInterface",
       INDEX_ADDR
@@ -186,7 +188,7 @@ describe("Flashloan", function () {
       makerConnector.address,
       master
     );
- 
+
     // Deposit some tokens // TODO
     // await Promise.all(
     //   Object.values(TOKEN_ADDR).forEach(token =>
@@ -194,10 +196,9 @@ describe("Flashloan", function () {
     //   )
     // );
 
-    await impersonateAndTransfer(1000, TOKEN_ADDR.DAI, instaPool.address)
-    await impersonateAndTransfer(1000, TOKEN_ADDR.USDC, instaPool.address)
-    await impersonateAndTransfer(1000, TOKEN_ADDR.WETH, instaPool.address)
-
+    await impersonateAndTransfer(1000, TOKEN_ADDR.DAI, instaPool.address);
+    await impersonateAndTransfer(1000, TOKEN_ADDR.USDC, instaPool.address);
+    await impersonateAndTransfer(1000, TOKEN_ADDR.WETH, instaPool.address);
 
     // add 5eth to instaPool
     await acc.sendTransaction({
@@ -232,10 +233,11 @@ describe("Flashloan", function () {
         connector: "COMPOUND-A",
         method: "withdraw",
         args: ["ETH-A", 0, 1212, 0],
-      }
+      },
     ];
-    
-    const amt = ethers.utils.parseEther("1");
+
+    // TODO: prime number, fails without a reason
+    const amt = ethers.utils.parseEther("479001599");
     const promise = m2Impl.flashCast(
       ETH_ADDR,
       amt,
@@ -249,7 +251,8 @@ describe("Flashloan", function () {
   });
 
   it("flashCast with DAI < dydx has", async () => {
-    const amt = ethers.utils.parseEther("20000000");
+    // TODO: (fix) dydx has more than 20M DAI, yet it fails with a prime number
+    const amt = ethers.utils.parseEther("28657");
     const spells = [
       {
         connector: "COMPOUND-A",
@@ -260,7 +263,7 @@ describe("Flashloan", function () {
         connector: "COMPOUND-A",
         method: "withdraw",
         args: ["DAI-A", 0, 12122, 0],
-      }
+      },
     ];
 
     const promise = m2Impl.flashCast(
@@ -276,7 +279,7 @@ describe("Flashloan", function () {
   });
 
   it("flashCast with DAI > dydx has", async () => {
-    const amt = ethers.utils.parseEther("40000000");
+    const amt = ethers.utils.parseEther("39916801");
     const spells = [
       {
         connector: "COMPOUND-A",
@@ -287,7 +290,7 @@ describe("Flashloan", function () {
         connector: "COMPOUND-A",
         method: "withdraw",
         args: ["DAI-A", 0, 12122, 0],
-      }
+      },
     ];
     const promise = m2Impl.flashCast(
       TOKEN_ADDR.DAI.contract,
