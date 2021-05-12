@@ -8,6 +8,9 @@ import {
     ISoloMargin
 } from "./interfaces.sol";
 
+import { DSMath } from "../../libs/math.sol";
+
+
 contract Setup {
     IndexInterface public constant instaIndex = IndexInterface(0x2971AdFa57b20E5a416aE5a708A8655A9c74f723);
     ListInterface public constant instaList = ListInterface(0x4c8a1BEb8a87765788946D6B19C6C6355194AbEb);
@@ -50,7 +53,11 @@ contract Setup {
     }
 }
 
-contract Helper is Setup {
+contract Helper is Setup, DSMath {
+    function convertTo18(uint256 _amt, uint _dec) internal pure returns (uint256 amt) {
+        amt = mul(_amt, 10 ** (18 - _dec));
+    }
+
     function encodeDsaCastData(
         address dsa,
         uint route,

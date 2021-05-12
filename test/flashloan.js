@@ -223,21 +223,36 @@ describe("Flashloan", function () {
 
   it("flashCast with ETH", async () => {
     const ETH_ADDR = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+    // const spells = [
+    //   {
+    //     connector: "COMPOUND-A",
+    //     method: "deposit",
+    //     args: ["ETH-A", MAX_VALUE, 0, 1212],
+    //   },
+    //   {
+    //     connector: "COMPOUND-A",
+    //     method: "withdraw",
+    //     args: ["ETH-A", 0, 1212, 0],
+    //   },
+    // ];
+
     const spells = [
       {
         connector: "COMPOUND-A",
-        method: "deposit",
-        args: ["ETH-A", MAX_VALUE, 0, 1212],
+        method: "depositCToken",
+        args: ["ETH-A", MAX_VALUE, 0, 123312],
       },
       {
         connector: "COMPOUND-A",
-        method: "withdraw",
-        args: ["ETH-A", 0, 1212, 0],
+        method: "withdrawCToken",
+        args: ["ETH-A", MAX_VALUE, 0, 0],
       },
     ];
 
+
     // TODO: prime number, fails without a reason
-    const amt = ethers.utils.parseEther("479001599");
+    // const amt = ethers.utils.parseEther("47599");
+    const amt = "45547657732544334267823"
     const promise = m2Impl.flashCast(
       ETH_ADDR,
       amt,

@@ -2,6 +2,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import { Variables } from "./variables.sol";
+
 interface TokenInterface {
     function transfer(address, uint) external returns (bool);
     function balanceOf(address) external view returns (uint);
@@ -127,9 +128,13 @@ contract InstaImplementationM2 is Constants {
         }
 
         if (_token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
-            payable(flashloan).transfer(_amount);
+            uint256 ethBalance = address(this).balance;
+            uint256 transferAmt = ethBalance > _amount ? _amount : ethBalance;
+            payable(flashloan).transfer(transferAmt);
         } else {
-            require(TokenInterface(_token).transfer(flashloan, _amount), "flashloan-transfer-failed"); // TODO: Try catch: If fails then transfer 0.00000001% less?
+            uint256 tokenBalance = TokenInterface(_token).balanceOf(address(this));
+            uint256 transferAmt = tokenBalance > _amount ? _amount : tokenBalance;
+            require(TokenInterface(_token).transfer(flashloan, transferAmt), "flashloan-transfer-failed"); // TODO: Try catch: If fails then transfer 0.00000001% less?
         }
 
         emit LogCast(

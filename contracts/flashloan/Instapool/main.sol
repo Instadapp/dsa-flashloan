@@ -3,7 +3,6 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import { DSMath } from "../../libs/math.sol";
 import { Helper } from "./helpers.sol";
 
 import { 
@@ -20,7 +19,7 @@ import {
 
 import { DydxFlashloanBase } from "./dydxBase.sol";
 
-contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase, DSMath {
+contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
     using SafeERC20 for IERC20;
 
     event LogFlashLoan(
@@ -102,10 +101,17 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase, DSMath {
 
         solo.operate(accountInfos, operations);
 
-        uint256 finalBal = _tokenContract.balanceOf(address(this));
+        uint256 finalBal = add(_tokenContract.balanceOf(address(this)), address(this).balance);
 
-        require(finalBal + 2 >= initailBal, "Less balance");
-
+        if (_token == wethAddr) {
+            uint256 _dif = wmul(_amount, 10000000000); // Taking margin of 0.00000001%
+            require(sub(initailBal, finalBal) <= _dif, "eth-amount-paid-less");
+        } else {
+            uint256 _decimals = TokenInterface(token).decimals();
+            uint _dif = wmul(convertTo18(_amount, _decimals), 10000000000); // Taking margin of 0.00000001%
+            require(convertTo18(sub(initailBal, finalBal), _decimals) <= _dif, "token-amount-paid-less");
+        }
+            
         emit LogFlashLoan(
             msg.sender,
             token,
