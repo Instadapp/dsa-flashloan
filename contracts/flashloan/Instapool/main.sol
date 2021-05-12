@@ -22,7 +22,6 @@ import { DydxFlashloanBase } from "./dydxBase.sol";
 contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
     using SafeERC20 for IERC20;
 
-    mapping (bytes4 => bool) whitelistedSigs;
 
     event LogFlashLoan(
         address indexed dsa,
@@ -31,16 +30,6 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         uint route
     );
 
-
-    /**
-    * @dev Converts the encoded data to sig.
-    * @param _data encoded data
-    */
-    function convertDataToSig(bytes memory _data) public pure returns(bytes4 sig) {
-        assembly {
-            sig := mload(add(_data, 4))
-        } 
-    }
 
     /**
     * @dev Check if sig is whitelisted
@@ -64,13 +53,6 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         }
     }
 
-    /**
-    * @dev modifier to check if data's sig is whitelisted
-    */
-    modifier isWhitelisted(bytes memory _data) {
-        require(checkWhitelisted(convertDataToSig(_data)), "sig-not-whitelisted");
-        _;
-    }
     
     function callFunction(
         address sender,

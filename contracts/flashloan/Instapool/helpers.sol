@@ -19,16 +19,38 @@ contract Setup {
     address public constant wethAddr = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant ethAddr = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant daiAddr = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    
     TokenInterface wethContract = TokenInterface(wethAddr);
     TokenInterface daiContract = TokenInterface(daiAddr);
     ISoloMargin solo = ISoloMargin(soloAddr);
 
     address public makerConnect;
     uint256 public vaultId;
+    mapping (bytes4 => bool) whitelistedSigs;
 
+
+    /**
+    * @dev modifier to check if msg.sender is a master 
+    */
     modifier isMaster() {
         require(msg.sender == instaIndex.master(), "not-master");
+        _;
+    }
+
+    /**
+    * @dev Converts the encoded data to sig.
+    * @param _data encoded data
+    */
+    function convertDataToSig(bytes memory _data) public pure returns(bytes4 sig) {
+        assembly {
+            sig := mload(add(_data, 4))
+        } 
+    }
+
+    /**
+    * @dev modifier to check if data's sig is whitelisted
+    */
+    modifier isWhitelisted(bytes memory _data) {
+        require(whitelistedSigs[convertDataToSig(_data)], "sig-not-whitelisted");
         _;
     }
 
