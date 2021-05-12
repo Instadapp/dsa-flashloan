@@ -63,3 +63,9 @@ build/contracts
 # buidler
 artifacts
 cache
+
+node_modules
+
+#Hardhat files
+cache
+artifacts
