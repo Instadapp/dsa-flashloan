@@ -134,6 +134,15 @@ async function addImplementation(m2Addr, signer) {
   await instaImplementationsContract.addImplementation(m2Addr, [sig1, sig2]);
 }
 
+async function whitelistSigs(instapool, signer) {
+  const sig2 = Web3.utils
+    .keccak256(
+      "flashCallback(address,address,uint256,string[],bytes[],address)"
+    )
+    .slice(0, 10);
+  await instapool.connect(signer).whitelistSigs([sig2], [true]);
+}
+
 async function createDSA(signer) {
   const indexContract = new ethers.Contract(INDEX_ADDR, InstaIndexABI, signer);
 
@@ -219,6 +228,8 @@ describe("Flashloan", function () {
       dsaAddr,
       master
     );
+
+    await whitelistSigs(instaPool, master)
   });
 
   it("flashCast with ETH", async () => {
