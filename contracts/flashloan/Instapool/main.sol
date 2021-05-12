@@ -22,6 +22,8 @@ import { DydxFlashloanBase } from "./dydxBase.sol";
 contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
     using SafeERC20 for IERC20;
 
+    mapping (bytes4 => bool) whitelistedSigs;
+
     event LogFlashLoan(
         address indexed dsa,
         address token,
@@ -29,6 +31,47 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         uint route
     );
 
+
+    /**
+    * @dev Converts the encoded data to sig.
+    * @param _data encoded data
+    */
+    function convertDataToSig(bytes memory _data) public pure returns(bytes4 sig) {
+        assembly {
+            sig := mload(add(_data, 4))
+        } 
+    }
+
+    /**
+    * @dev Check if sig is whitelisted
+    * @param _sig bytes4
+    */
+    function checkWhitelisted(bytes4 _sig) public view returns(bool) {
+        return whitelistedSigs[_sig];
+    }
+    
+
+    /**
+    * @dev Whitelists / Blacklists a given sig
+    * @param _sigs list of sigs
+    * @param _whitelist list of bools indicate whitelist/blacklist
+    */
+
+    function whitelistSigs(bytes4[] memory _sigs, bool[] memory _whitelist) public {
+        require(_sigs.length == _whitelist.length, "arr-lengths-unequal");
+        for (uint i = 0; i < _sigs.length; i++) {
+            whitelistedSigs[_sigs[i]] = _whitelist[i];
+        }
+    }
+
+    /**
+    * @dev modifier to check if data's sig is whitelisted
+    */
+    modifier isWhitelisted(bytes memory _data) {
+        require(checkWhitelisted(convertDataToSig(_data)), "sig-not-whitelisted");
+        _;
+    }
+    
     function callFunction(
         address sender,
         Account.Info memory account,
