@@ -96,6 +96,38 @@ contract InstaImplementationM2 is Constants {
         }
     }
 
+    function _cast(
+        string[] calldata _targetNames,
+        bytes[] calldata _datas,
+        address _origin,
+        uint _length
+    )
+    internal 
+    returns (bytes32) // Dummy return to fix instaIndex buildWithCast function
+    {
+        string[] memory eventNames = new string[](_length);
+        bytes[] memory eventParams = new bytes[](_length);
+
+        (bool isOk, address[] memory _targets) = ConnectorsInterface(connectorsM1).isConnectors(_targetNames);
+
+        require(isOk, "1: not-connector");
+
+        for (uint i = 0; i < _length; i++) {
+            bytes memory response = spell(_targets[i], _datas[i]);
+            (eventNames[i], eventParams[i]) = decodeEvent(response);
+        }
+
+        emit LogCast(
+            _origin,
+            msg.sender,
+            msg.value,
+            _targetNames,
+            _targets,
+            eventNames,
+            eventParams
+        );
+    }
+
     /**
      * @dev This is similar to cast on implementation_m1
      * @param _targetNames Array of Connector address.
@@ -118,17 +150,7 @@ contract InstaImplementationM2 is Constants {
         require(_length != 0, "2: length-invalid");
         require(_length == _datas.length , "2: array-length-invalid");
 
-        string[] memory eventNames = new string[](_length);
-        bytes[] memory eventParams = new bytes[](_length);
-
-        (bool isOk, address[] memory _targets) = ConnectorsInterface(connectorsM1).isConnectors(_targetNames);
-
-        require(isOk, "2: not-connector");
-
-        for (uint i = 0; i < _length; i++) {
-            bytes memory response = spell(_targets[i], _datas[i]);
-            (eventNames[i], eventParams[i]) = decodeEvent(response);
-        }
+        _cast(_targetNames, _datas, _origin, _length);
 
         if (_token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
             uint256 ethBalance = address(this).balance;
@@ -139,39 +161,37 @@ contract InstaImplementationM2 is Constants {
             uint256 transferAmt = tokenBalance > _amount ? _amount : tokenBalance;
             require(TokenInterface(_token).transfer(flashloan, transferAmt), "2: flashloan-transfer-failed"); // TODO: Try catch: If fails then transfer 0.00000001% less?
         }
-
-        emit LogCast(
-            _origin,
-            sender,
-            msg.value,
-            _targetNames,
-            _targets,
-            eventNames,
-            eventParams
-        );
     }
 
-    function flashCast(
+    function cast(
         address _token,
         uint256 _amount,
         string[] calldata _targetNames,
         bytes[] calldata _datas,
         address _origin
     ) external {
-        require(_auth[msg.sender], "2: not-an-owner");
-        bytes memory data = abi.encodeWithSelector(
-            this.flashCallback.selector,
-            msg.sender,
-            _token,
-            _amount,
-            _targetNames,
-            _datas,
-            flashloan
-        );
+        if (_amount == 0) {
+            uint256 _length = _targetNames.length;
+            require(_auth[msg.sender] || msg.sender == instaIndex, "1: permission-denied");
+            require(_length != 0, "1: length-invalid");
+            require(_length == _datas.length , "1: array-length-invalid");
+            _cast(_targetNames, _datas, _origin, _length);
+        } else {
+            require(_auth[msg.sender], "2: not-an-owner");
+            bytes memory data = abi.encodeWithSelector(
+                this.flashCallback.selector,
+                msg.sender,
+                _token,
+                _amount,
+                _targetNames,
+                _datas,
+                flashloan
+            );
 
-        FlashloanInterface(flashloan).initiateFlashLoan(_token, _amount, data);
+            FlashloanInterface(flashloan).initiateFlashLoan(_token, _amount, data);
 
-        emit LogFlashCast(_origin, _token, _amount);
+            emit LogFlashCast(_origin, _token, _amount);
+        }
     }
 
 }
