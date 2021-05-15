@@ -93,8 +93,8 @@ async function deployMaker(signer) {
   return contract;
 }
 
-async function deployInstaPoolV2(vaultId, makerAddress, signer) {
-  const factory = await ethers.getContractFactory("InstaPoolV2", signer);
+async function deployInstaPoolV2Implementation(vaultId, makerAddress, signer) {
+  const factory = await ethers.getContractFactory("InstaPoolV2Implementation", signer);
   const contract = await factory.deploy(vaultId, makerAddress);
 
   await contract.deployed();
@@ -192,7 +192,7 @@ describe("Flashloan", function () {
 
     const vaultId = await openVault(master);
     const makerConnector = await deployMaker(master);
-    const instaPool = await deployInstaPoolV2(
+    const instaPool = await deployInstaPoolV2Implementation(
       vaultId,
       makerConnector.address,
       master
