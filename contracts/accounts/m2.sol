@@ -154,6 +154,8 @@ contract InstaImplementationM2 is Constants {
 
         _cast(_targetNames, _datas, _origin, _length);
 
+        _status = _NOT_ENTERED;
+
         if (_token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
             uint256 ethBalance = address(this).balance;
             uint256 transferAmt = ethBalance > _amount ? _amount : ethBalance;
@@ -163,7 +165,6 @@ contract InstaImplementationM2 is Constants {
             uint256 transferAmt = tokenBalance > _amount ? _amount : tokenBalance;
             require(TokenInterface(_token).transfer(flashloan, transferAmt), "2: flashloan-transfer-failed");
         }
-        _status = _NOT_ENTERED;
     }
 
     function cast(
