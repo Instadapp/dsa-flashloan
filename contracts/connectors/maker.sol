@@ -406,5 +406,5 @@ contract BasicResolver is MakerHelpers {
 }
 
 contract ConnectMaker is  BasicResolver {
-    string public constant name = "MakerDao-v1.0";
+    string public constant name = "MakerDAO-v1.0";
 }
