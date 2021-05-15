@@ -31,6 +31,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         uint route
     );
 
+    event LogWhitelistSig(bytes4 indexed sig, bool whitelist);
 
     /**
     * @dev Check if sig is whitelisted
@@ -50,7 +51,9 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
     function whitelistSigs(bytes4[] memory _sigs, bool[] memory _whitelist) public isMaster {
         require(_sigs.length == _whitelist.length, "arr-lengths-unequal");
         for (uint i = 0; i < _sigs.length; i++) {
+            require(!whitelistedSigs[_sigs[i]], "already-enabled");
             whitelistedSigs[_sigs[i]] = _whitelist[i];
+            emit LogWhitelistSig(_sigs[i], _whitelist[i]);
         }
     }
 
