@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -31,6 +31,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         uint route
     );
 
+    event LogWhitelistSig(bytes4 indexed sig, bool whitelist);
 
     /**
     * @dev Check if sig is whitelisted
@@ -50,7 +51,9 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
     function whitelistSigs(bytes4[] memory _sigs, bool[] memory _whitelist) public isMaster {
         require(_sigs.length == _whitelist.length, "arr-lengths-unequal");
         for (uint i = 0; i < _sigs.length; i++) {
+            require(!whitelistedSigs[_sigs[i]], "already-enabled");
             whitelistedSigs[_sigs[i]] = _whitelist[i];
+            emit LogWhitelistSig(_sigs[i], _whitelist[i]);
         }
     }
 
@@ -87,7 +90,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         selectPayback(cd.route);
 
         if (isWeth) {
-            wethContract.deposit.value(address(this).balance)();
+            wethContract.deposit{value: address(this).balance}();
         }
     }
 
@@ -157,11 +160,12 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
     }
 }
 
-contract InstaPoolV2 is DydxFlashloaner {
-    constructor(
+contract InstaPoolV2Implementation is DydxFlashloaner {
+    function initialize(
         uint256 _vaultId,
         address _makerConnect
     ) public {
+        require(vaultId == 0 && makerConnect == address(0), "Already Initialized");
         wethContract.approve(wethAddr, uint256(-1));
         vaultId = _vaultId;
         makerConnect = _makerConnect;
