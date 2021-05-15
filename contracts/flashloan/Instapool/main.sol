@@ -157,11 +157,12 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
     }
 }
 
-contract InstaPoolV2 is DydxFlashloaner {
-    constructor(
+contract InstaPoolV2Implementation is DydxFlashloaner {
+    function initialize(
         uint256 _vaultId,
         address _makerConnect
     ) public {
+        require(vaultId == 0 && makerConnect == address(0), "Already Initialized");
         wethContract.approve(wethAddr, uint256(-1));
         vaultId = _vaultId;
         makerConnect = _makerConnect;

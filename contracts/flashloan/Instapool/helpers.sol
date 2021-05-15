@@ -1,3 +1,5 @@
+pragma solidity ^0.6.0;
+
 import { 
     IndexInterface,
     ListInterface,
@@ -10,8 +12,10 @@ import {
 
 import { DSMath } from "../../libs/math.sol";
 
+import {Variables} from "./variables.sol";
 
-contract Setup {
+
+contract Setup is Variables {
     IndexInterface public constant instaIndex = IndexInterface(0x2971AdFa57b20E5a416aE5a708A8655A9c74f723);
     ListInterface public constant instaList = ListInterface(0x4c8a1BEb8a87765788946D6B19C6C6355194AbEb);
 
@@ -19,14 +23,10 @@ contract Setup {
     address public constant wethAddr = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant ethAddr = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant daiAddr = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
-    TokenInterface wethContract = TokenInterface(wethAddr);
-    TokenInterface daiContract = TokenInterface(daiAddr);
-    ISoloMargin solo = ISoloMargin(soloAddr);
-
-    address public makerConnect;
-    uint256 public vaultId;
-    mapping (bytes4 => bool) whitelistedSigs;
-
+    
+    TokenInterface constant wethContract = TokenInterface(wethAddr);
+    TokenInterface constant daiContract = TokenInterface(daiAddr);
+    ISoloMargin constant solo = ISoloMargin(soloAddr);
 
     /**
     * @dev modifier to check if msg.sender is a master 
