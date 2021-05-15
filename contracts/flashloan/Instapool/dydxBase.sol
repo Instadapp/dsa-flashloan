@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import { Account, Actions, Types, ISoloMargin } from "./interfaces.sol";

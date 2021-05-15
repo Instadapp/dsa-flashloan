@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.0;
 
 import { 
     IndexInterface,
@@ -10,7 +10,7 @@ import {
     ISoloMargin
 } from "./interfaces.sol";
 
-import { DSMath } from "../../libs/math.sol";
+import { DSMath } from "../../common/math.sol";
 
 import {Variables} from "./variables.sol";
 
