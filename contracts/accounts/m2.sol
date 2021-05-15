@@ -129,6 +129,8 @@ contract InstaImplementationM2 is Constants {
             eventNames,
             eventParams
         );
+
+        _status = _NOT_ENTERED;
     }
 
     /**
@@ -143,8 +145,7 @@ contract InstaImplementationM2 is Constants {
         string[] calldata _targetNames,
         bytes[] calldata _datas,
         address _origin
-    )
-    external payable 
+    ) external payable 
     {      
         uint256 _length = _targetNames.length;
         require(_auth[sender], "2: not-an-owner");
@@ -153,8 +154,6 @@ contract InstaImplementationM2 is Constants {
         require(_length == _datas.length , "2: array-length-invalid");
 
         _cast(_targetNames, _datas, _origin, _length);
-
-        _status = _NOT_ENTERED;
 
         if (_token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
             uint256 ethBalance = address(this).balance;
@@ -183,8 +182,6 @@ contract InstaImplementationM2 is Constants {
             require(_length != 0, "2: length-invalid");
             require(_length == _datas.length , "2: array-length-invalid");
             _cast(_targetNames, _datas, _origin, _length);
-
-            _status = _NOT_ENTERED;
         } else {
             bytes memory data = abi.encodeWithSelector(
                 this.flashCallback.selector,
