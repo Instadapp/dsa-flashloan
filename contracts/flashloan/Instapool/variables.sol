@@ -4,6 +4,9 @@ contract Variables {
     // Maker connector
     address public makerConnect;
 
+    // AaveV2 connector
+    address public aaveV2Connect;
+
     // Maker ETH-A Vault ID
     uint256 public vaultId;
 

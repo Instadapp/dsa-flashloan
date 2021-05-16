@@ -23,9 +23,11 @@ contract Setup is Variables {
     address public constant wethAddr = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address public constant ethAddr = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     address public constant daiAddr = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address public constant usdcAddr = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     
     TokenInterface constant wethContract = TokenInterface(wethAddr);
     TokenInterface constant daiContract = TokenInterface(daiAddr);
+    TokenInterface constant usdcContract = TokenInterface(usdcAddr);
     ISoloMargin constant solo = ISoloMargin(soloAddr);
 
     /**
@@ -106,27 +108,37 @@ contract Helper is Setup, DSMath {
         spell(_target, _data);
     }
 
-    function selectBorrow(uint256 route, uint256 amt) internal {
+    function selectBorrow(uint256 route, address token, uint256 amt) internal {
         if (route == 0) {
             return;
         } else if (route == 1) {
-            bytes memory _dataOne = abi.encodeWithSignature("deposit(uint256,uint256)", vaultId, uint(-1));
+            bytes memory _dataOne = abi.encodeWithSignature("deposit(uint256,uint256)", vaultId, uint256(-1));
             bytes memory _dataTwo = abi.encodeWithSignature("borrow(uint256,uint256)", vaultId, amt);
             spell(makerConnect, _dataOne);
             spell(makerConnect, _dataTwo);
+        } if (route == 2) {
+            bytes memory _dataOne = abi.encodeWithSignature("deposit(address,uint256)", ethAddr, uint256(-1));
+            bytes memory _dataTwo = abi.encodeWithSignature("borrow(address,uint256)", token, amt, 2);
+            spell(aaveV2Connect, _dataOne);
+            spell(aaveV2Connect, _dataTwo);
         } else {
             revert("route-not-found");
         }
     }
 
-    function selectPayback(uint256 route) internal {
+    function selectPayback(uint256 route, address token) internal {
         if (route == 0) {
             return;
         } else if (route == 1) {
-            bytes memory _dataOne = abi.encodeWithSignature("payback(uint256,uint256)", vaultId, uint(-1));
-            bytes memory _dataTwo = abi.encodeWithSignature("withdraw(uint256,uint256)", vaultId, uint(-1));
+            bytes memory _dataOne = abi.encodeWithSignature("payback(uint256,uint256)", vaultId, uint256(-1));
+            bytes memory _dataTwo = abi.encodeWithSignature("withdraw(uint256,uint256)", vaultId, uint256(-1));
             spell(makerConnect, _dataOne);
             spell(makerConnect, _dataTwo);
+        } else if (route == 2) {
+            bytes memory _dataOne = abi.encodeWithSignature("payback(address,uint256)", token, uint256(-1), 2);
+            bytes memory _dataTwo = abi.encodeWithSignature("withdraw(address,uint256)", ethAddr, uint256(-1));
+            spell(aaveV2Connect, _dataOne);
+            spell(aaveV2Connect, _dataTwo);
         } else {
             revert("route-not-found");
         }

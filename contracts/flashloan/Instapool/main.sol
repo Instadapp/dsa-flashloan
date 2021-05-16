@@ -76,7 +76,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             wethContract.withdraw(wethContract.balanceOf(address(this)));
         }
 
-        selectBorrow(cd.route, cd.amount);
+        selectBorrow(cd.route, cd.token, cd.amount);
 
         if (cd.token == ethAddr) {
             payable(cd.dsa).transfer(cd.amount);
@@ -87,7 +87,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
 
         Address.functionCall(cd.dsa, cd.callData, "DSA-flashloan-fallback-failed");
 
-        selectPayback(cd.route);
+        selectPayback(cd.route, cd.token);
 
         if (isWeth) {
             wethContract.deposit{value: address(this).balance}();
@@ -104,11 +104,16 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             if (amount > dydxDaiAmt) {
                 uint256 dydxWEthAmt = wethContract.balanceOf(soloAddr);
                 route = 1;
-                _amount = dydxWEthAmt;
+                _amount = sub(dydxWEthAmt, 10000);
                 _token = wethAddr;
             } else {
                 _token = token;
             }
+        } else if (token != ethAddr && token != usdcAddr) {
+            uint256 dydxWEthAmt = wethContract.balanceOf(soloAddr);
+            route = 2;
+            _amount = sub(dydxWEthAmt, 10000);
+            _token = wethAddr;
         } else {
             _token = token == ethAddr ? wethAddr : token;
         }
@@ -138,7 +143,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             require(sub(initialBal, finalBal) <= _dif, "eth-amount-paid-less");
         } else {
             uint256 _decimals = TokenInterface(token).decimals();
-            uint _dif = wmul(convertTo18(_amount, _decimals), 10000000000); // Taking margin of 0.00000001%
+            uint _dif = wmul(convertTo18(_amount, _decimals), 200000000000); // Taking margin of 0.0000002%
             require(convertTo18(sub(initialBal, finalBal), _decimals) <= _dif, "token-amount-paid-less");
         }
             
@@ -163,12 +168,14 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
 contract InstaPoolV2Implementation is DydxFlashloaner {
     function initialize(
         uint256 _vaultId,
-        address _makerConnect
+        address _makerConnect,
+        address _aaveV2Connect
     ) public {
-        require(vaultId == 0 && makerConnect == address(0), "Already Initialized");
+        require(vaultId == 0 && makerConnect == address(0) && aaveV2Connect == address(0), "already-Initialized");
         wethContract.approve(wethAddr, uint256(-1));
         vaultId = _vaultId;
         makerConnect = _makerConnect;
+        aaveV2Connect = _aaveV2Connect;
     }
 
     receive() external payable {}
