@@ -68,6 +68,6 @@ contract ConnectInstaPool is LiquidityResolver {
      * @dev Connector Details.
     */
     function connectorID() public pure returns(uint _type, uint _id) {
-        (_type, _id) = (1, 96);
+        (_type, _id) = (1, 97);
     }
 }
