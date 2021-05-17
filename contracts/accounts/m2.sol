@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import { Variables } from "./variables.sol";
 
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 
 interface TokenInterface {
@@ -162,7 +163,7 @@ contract InstaImplementationM2 is Constants {
         } else {
             uint256 tokenBalance = TokenInterface(_token).balanceOf(address(this));
             uint256 transferAmt = tokenBalance > _amount ? _amount : tokenBalance;
-            require(TokenInterface(_token).transfer(flashloan, transferAmt), "2: flashloan-transfer-failed");
+            SafeERC20.safeTransfer(IERC20(_token), flashloan, transferAmt);
         }
     }
 
