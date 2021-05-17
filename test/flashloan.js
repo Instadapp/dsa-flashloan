@@ -24,6 +24,10 @@ const TOKEN_ADDR = {
     contract: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
     holder: "0xf977814e90da44bfa03b6295a0616a897441acec",
   },
+  USDT: {
+    contract: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    holder: "0x5754284f345afc66a98fbb0a0afe71e0f007b949",
+  },
 };
 const MAX_VALUE =
   "115792089237316195423570985008687907853269984665640564039457584007913129639935";
@@ -93,11 +97,22 @@ async function deployMaker(signer) {
   return contract;
 }
 
-async function deployInstaPoolV2Implementation(vaultId, makerAddress, signer) {
-  const factory = await ethers.getContractFactory("InstaPoolV2Implementation", signer);
-  const contract = await factory.deploy(vaultId, makerAddress);
+async function deployAave(signer) {
+  const factory = await ethers.getContractFactory("ConnectAave", signer);
+  const contract = await factory.deploy();
 
   await contract.deployed();
+
+  return contract;
+}
+
+async function deployInstaPoolV2Implementation(vaultId, makerAddress, aaveAddress, signer) {
+  const factory = await ethers.getContractFactory("InstaPoolV2Implementation", signer);
+  const contract = await factory.deploy();
+
+  await contract.deployed();
+
+  await contract.initialize(vaultId, makerAddress, aaveAddress)
 
   return contract;
 }
@@ -116,7 +131,7 @@ async function deployM2Contract(flashLoanAddr, signer) {
 
 async function addImplementation(m2Addr, signer) {
   const sig1 = Web3.utils
-    .keccak256("flashCast(address,uint256,string[],bytes[],address)")
+    .keccak256("cast(string[],bytes[],address,address,uint256)")
     .slice(0, 10);
 
   const sig2 = Web3.utils
@@ -192,9 +207,11 @@ describe("Flashloan", function () {
 
     const vaultId = await openVault(master);
     const makerConnector = await deployMaker(master);
+    const aaveConnector = await deployAave(master)
     const instaPool = await deployInstaPoolV2Implementation(
       vaultId,
       makerConnector.address,
+      aaveConnector.address,
       master
     );
 
@@ -208,6 +225,7 @@ describe("Flashloan", function () {
     await impersonateAndTransfer(1000, TOKEN_ADDR.DAI, instaPool.address);
     await impersonateAndTransfer(1000, TOKEN_ADDR.USDC, instaPool.address);
     await impersonateAndTransfer(1000, TOKEN_ADDR.WETH, instaPool.address);
+    await impersonateAndTransfer(1000, TOKEN_ADDR.USDT, instaPool.address);
 
     // add 5eth to instaPool
     await acc.sendTransaction({
@@ -261,11 +279,11 @@ describe("Flashloan", function () {
     ];
 
     const amt = "45547657732544334267823";
-    const promise = m2Impl.flashCast(
-      ETH_ADDR,
-      amt,
+    const promise = m2Impl.cast(
       ...encodeSpells(spells),
-      master.address
+      master.address,
+      ETH_ADDR,
+      amt
     );
 
     await expect(promise)
@@ -288,11 +306,11 @@ describe("Flashloan", function () {
       },
     ];
 
-    const promise = m2Impl.flashCast(
+    const promise = m2Impl.cast(
+      ...encodeSpells(spells),
+      master.address,
       TOKEN_ADDR.DAI.contract,
       amt,
-      ...encodeSpells(spells),
-      master.address
     );
 
     await expect(promise)
@@ -314,15 +332,41 @@ describe("Flashloan", function () {
         args: ["DAI-A", 0, 12122, 0],
       },
     ];
-    const promise = m2Impl.flashCast(
+    const promise = m2Impl.cast(
+      ...encodeSpells(spells),
+      master.address,
       TOKEN_ADDR.DAI.contract,
       amt,
-      ...encodeSpells(spells),
-      master.address
     );
 
     await expect(promise)
       .to.emit(m2Impl, "LogFlashCast")
       .withArgs(master.address, TOKEN_ADDR.DAI.contract, amt);
+  });
+
+  it("flashCast with USDT has", async () => {
+    const amt = "456537823451";
+    const spells = [
+      {
+        connector: "COMPOUND-A",
+        method: "deposit",
+        args: ["USDT-A", MAX_VALUE, 0, 12122],
+      },
+      {
+        connector: "COMPOUND-A",
+        method: "withdraw",
+        args: ["USDT-A", 0, 12122, 0],
+      },
+    ];
+    const promise = m2Impl.cast(
+      ...encodeSpells(spells),
+      master.address,
+      TOKEN_ADDR.USDT.contract,
+      amt
+    );
+
+    await expect(promise)
+      .to.emit(m2Impl, "LogFlashCast")
+      .withArgs(master.address, TOKEN_ADDR.USDT.contract, amt);
   });
 });
