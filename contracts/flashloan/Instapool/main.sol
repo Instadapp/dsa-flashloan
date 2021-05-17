@@ -71,7 +71,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             (address, uint256, address, uint256, bytes)
         );
 
-        bool isWeth = cd.route == 1 || cd.token == ethAddr;
+        bool isWeth = cd.route != 0 || cd.token == ethAddr;
         if (isWeth) {
             wethContract.withdraw(wethContract.balanceOf(address(this)));
         }
