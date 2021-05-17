@@ -30,11 +30,14 @@ interface FlashloanInterface {
 
 contract Constants is Variables {
     // InstaIndex Address.
-    address internal immutable instaIndex;
+    address public immutable instaIndex;
     // Connectors Address.
     address public immutable connectorsM1;
     // Instapool Address.
     address public immutable flashloan;
+
+    uint256 internal constant _NOT_ENTERED = 1;
+    uint256 internal constant _ENTERED = 2;
 
     constructor(address _instaIndex, address _connectors, address _flashloan) {
         connectorsM1 = _connectors;
@@ -96,28 +99,15 @@ contract InstaImplementationM2 is Constants {
         }
     }
 
-    /**
-     * @dev This is similar to cast on implementation_m1
-     * @param _targetNames Array of Connector address.
-     * @param _datas Array of Calldata.
-    */
-    function flashCallback(
-        address sender,
-        address _token,
-        uint256 _amount,
+    function _cast(
         string[] calldata _targetNames,
         bytes[] calldata _datas,
-        address _origin
+        address _origin,
+        uint _length
     )
-    external
-    payable 
-    {      
-        uint256 _length = _targetNames.length;
-        require(_auth[sender], "2: not-an-owner");
-        require(msg.sender == flashloan, "2: not-flashloan-contract");
-        require(_length != 0, "2: length-invalid");
-        require(_length == _datas.length , "2: array-length-invalid");
-
+    internal 
+    {   
+        require(_status == _ENTERED, "2: cast-not-entered");
         string[] memory eventNames = new string[](_length);
         bytes[] memory eventParams = new bytes[](_length);
 
@@ -130,6 +120,41 @@ contract InstaImplementationM2 is Constants {
             (eventNames[i], eventParams[i]) = decodeEvent(response);
         }
 
+        emit LogCast(
+            _origin,
+            msg.sender,
+            msg.value,
+            _targetNames,
+            _targets,
+            eventNames,
+            eventParams
+        );
+
+        _status = _NOT_ENTERED;
+    }
+
+    /**
+     * @dev This is similar to cast on implementation_m1
+     * @param _targetNames Array of Connector address.
+     * @param _datas Array of Calldata.
+    */
+    function flashCallback(
+        address sender,
+        address _token,
+        uint256 _amount,
+        string[] calldata _targetNames,
+        bytes[] calldata _datas,
+        address _origin
+    ) external payable 
+    {      
+        uint256 _length = _targetNames.length;
+        require(_auth[sender], "2: not-an-owner");
+        require(msg.sender == flashloan, "2: not-flashloan-contract");
+        require(_length != 0, "2: length-invalid");
+        require(_length == _datas.length , "2: array-length-invalid");
+
+        _cast(_targetNames, _datas, _origin, _length);
+
         if (_token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
             uint256 ethBalance = address(this).balance;
             uint256 transferAmt = ethBalance > _amount ? _amount : ethBalance;
@@ -137,41 +162,42 @@ contract InstaImplementationM2 is Constants {
         } else {
             uint256 tokenBalance = TokenInterface(_token).balanceOf(address(this));
             uint256 transferAmt = tokenBalance > _amount ? _amount : tokenBalance;
-            require(TokenInterface(_token).transfer(flashloan, transferAmt), "2: flashloan-transfer-failed"); // TODO: Try catch: If fails then transfer 0.00000001% less?
+            require(TokenInterface(_token).transfer(flashloan, transferAmt), "2: flashloan-transfer-failed");
         }
-
-        emit LogCast(
-            _origin,
-            sender,
-            msg.value,
-            _targetNames,
-            _targets,
-            eventNames,
-            eventParams
-        );
     }
 
-    function flashCast(
-        address _token,
-        uint256 _amount,
+    function cast(
         string[] calldata _targetNames,
         bytes[] calldata _datas,
-        address _origin
+        address _origin,
+        address _token,
+        uint256 _amount
     ) external {
-        require(_auth[msg.sender], "2: not-an-owner");
-        bytes memory data = abi.encodeWithSelector(
-            this.flashCallback.selector,
-            msg.sender,
-            _token,
-            _amount,
-            _targetNames,
-            _datas,
-            flashloan
-        );
+        require(_status != _ENTERED, "2: cast-entered");
+        _status = _ENTERED;
 
-        FlashloanInterface(flashloan).initiateFlashLoan(_token, _amount, data);
+        require(_auth[msg.sender], "2: permission-denied");
+        if (_amount == 0) {
+            uint256 _length = _targetNames.length;
+            require(_length != 0, "2: length-invalid");
+            require(_length == _datas.length , "2: array-length-invalid");
+            _cast(_targetNames, _datas, _origin, _length);
+        } else {
+            bytes memory data = abi.encodeWithSelector(
+                this.flashCallback.selector,
+                msg.sender,
+                _token,
+                _amount,
+                _targetNames,
+                _datas,
+                flashloan
+            );
 
-        emit LogFlashCast(_origin, _token, _amount);
+            FlashloanInterface(flashloan).initiateFlashLoan(_token, _amount, data);
+
+            emit LogFlashCast(_origin, _token, _amount);
+        }
+        require(_status == _NOT_ENTERED, "2: cast-still-entered");
     }
 
 }
