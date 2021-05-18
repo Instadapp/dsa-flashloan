@@ -1,5 +1,4 @@
 const hre = require("hardhat");
-const { expect } = require("chai");
 const { ethers, network, waffle, web3 } = hre;
 const chai = require("chai");
 const chaiPromise = require("chai-as-promised");
@@ -9,6 +8,8 @@ const deployConnector = require("./utils/deployConnector");
 
 chai.use(chaiPromise);
 chai.use(solidity);
+
+const { expect } = chai;
 
 // External Address
 const MAKER_ADDR = "0x5ef30b9986345249bc32d8928B7ee64DE9435E39";
@@ -158,12 +159,8 @@ async function addImplementation(m2Addr, signer) {
   await instaImplementationsContract.addImplementation(m2Addr, [sig1, sig2]);
 }
 
-async function whitelistSigs(instapool, signer) {
-  const sig2 = Web3.utils
-    .keccak256(
-      "flashCallback(address,address,uint256,string[],bytes[],address)"
-    )
-    .slice(0, 10);
+async function whitelistSigs(fn, instapool, signer) {
+  const sig2 = Web3.utils.keccak256(fn).slice(0, 10);
   await instapool.connect(signer).whitelistSigs([sig2], [true]);
 }
 
@@ -256,7 +253,11 @@ describe("Flashloan", function () {
       master
     );
 
-    await whitelistSigs(instaPool, master);
+    await whitelistSigs(
+      "flashCallback(address,address,uint256,string[],bytes[],address)",
+      instaPool,
+      master
+    );
   });
 
   it("flashCast with ETH", async () => {
@@ -380,11 +381,21 @@ describe("Flashloan", function () {
   });
 });
 
+function encodeFlashCastData(spells, version) {
+  const encodeSpellsData = encodeSpells(spells);
+  const targetType = Number(version) === 1 ? "address[]" : "string[]";
+  let argTypes = [targetType, "bytes[]"];
+  return web3.eth.abi.encodeParameters(argTypes, [
+    encodeSpellsData.targets,
+    encodeSpellsData.spells,
+  ]);
+}
+
 describe("ConnectV2InstaPool connector", () => {
   const connectorName = "INSTAPOOL-V2";
   const contractName = "ConnectV2InstaPool";
   let master, acc, connectorAddr;
-  let indexContract, instaConnectors, instaPool;
+  let indexContract, instaConnectors, instaPool, m1Impl;
 
   before(async () => {
     const [wallet1] = await ethers.getSigners();
@@ -437,7 +448,7 @@ describe("ConnectV2InstaPool connector", () => {
 
   it("should cast the spells", async () => {
     const DAI_ADDR = "0x6b175474e89094c44da98b954eedeac495271d0f";
-    const amt = ethers.utils.parseEther("30000000");
+    const amt = "25657657732544334267823451";
     const spells = [
       {
         connector: "COMPOUND-A",
@@ -456,13 +467,7 @@ describe("ConnectV2InstaPool connector", () => {
       },
     ];
 
-    const encodeSpellsData = encodeSpells(spells);
-    const targetType = "string[]";
-    let argTypes = [targetType, "bytes[]"];
-    const calldata = Web3.eth.abi.encodeParameters(argTypes, [
-      encodeSpellsData.targets,
-      encodeSpellsData.spells,
-    ]);
+    const calldata = encodeFlashCastData(spells);
 
     const flashSpells = [
       {
@@ -471,5 +476,17 @@ describe("ConnectV2InstaPool connector", () => {
         args: [DAI_ADDR, amt, 0, calldata],
       },
     ];
+
+    // create DSA
+    const dsa = await createDSA(master);
+
+    // add m1 impl
+    m1Impl = await ethers.getContractAt("InstaImplementationM1", dsa.address);
+
+    // white listed
+    await whitelistSigs("cast(string[],bytes[],address)", instaPool, master);
+
+    // m1Impl.cast(...encodeSpells(flashSpells), "0x")
+    await m1Impl.cast(...encodeSpells(flashSpells), master.address);
   });
 });
