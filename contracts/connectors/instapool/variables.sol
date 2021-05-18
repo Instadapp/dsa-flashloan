@@ -8,5 +8,9 @@ contract Variables {
     /**
     * @dev Instapool / Receiver contract proxy
     */
-    InstaFlashV2Interface public constant instaPool = InstaFlashV2Interface(0x4A090897f47993C2504144419751D6A91D79AbF4);
+    InstaFlashV2Interface public immutable instaPool;
+
+    constructor(address _instaPool) {
+        instaPool = InstaFlashV2Interface(_instaPool);
+    }
 }

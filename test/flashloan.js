@@ -5,6 +5,7 @@ const chai = require("chai");
 const chaiPromise = require("chai-as-promised");
 const { solidity } = require("ethereum-waffle");
 const abis = require("./utils/abi");
+const deployConnector = require("./utils/deployConnector");
 
 chai.use(chaiPromise);
 chai.use(solidity);
@@ -106,13 +107,21 @@ async function deployAave(signer) {
   return contract;
 }
 
-async function deployInstaPoolV2Implementation(vaultId, makerAddress, aaveAddress, signer) {
-  const factory = await ethers.getContractFactory("InstaPoolV2Implementation", signer);
+async function deployInstaPoolV2Implementation(
+  vaultId,
+  makerAddress,
+  aaveAddress,
+  signer
+) {
+  const factory = await ethers.getContractFactory(
+    "InstaPoolV2Implementation",
+    signer
+  );
   const contract = await factory.deploy();
 
   await contract.deployed();
 
-  await contract.initialize(vaultId, makerAddress, aaveAddress)
+  await contract.initialize(vaultId, makerAddress, aaveAddress);
 
   return contract;
 }
@@ -207,7 +216,7 @@ describe("Flashloan", function () {
 
     const vaultId = await openVault(master);
     const makerConnector = await deployMaker(master);
-    const aaveConnector = await deployAave(master)
+    const aaveConnector = await deployAave(master);
     const instaPool = await deployInstaPoolV2Implementation(
       vaultId,
       makerConnector.address,
@@ -247,7 +256,7 @@ describe("Flashloan", function () {
       master
     );
 
-    await whitelistSigs(instaPool, master)
+    await whitelistSigs(instaPool, master);
   });
 
   it("flashCast with ETH", async () => {
@@ -310,7 +319,7 @@ describe("Flashloan", function () {
       ...encodeSpells(spells),
       master.address,
       TOKEN_ADDR.DAI.contract,
-      amt,
+      amt
     );
 
     await expect(promise)
@@ -336,7 +345,7 @@ describe("Flashloan", function () {
       ...encodeSpells(spells),
       master.address,
       TOKEN_ADDR.DAI.contract,
-      amt,
+      amt
     );
 
     await expect(promise)
@@ -368,5 +377,99 @@ describe("Flashloan", function () {
     await expect(promise)
       .to.emit(m2Impl, "LogFlashCast")
       .withArgs(master.address, TOKEN_ADDR.USDT.contract, amt);
+  });
+});
+
+describe("ConnectV2InstaPool connector", () => {
+  const connectorName = "INSTAPOOL-V2";
+  const contractName = "ConnectV2InstaPool";
+  let master, acc, connectorAddr;
+  let indexContract, instaConnectors, instaPool;
+
+  before(async () => {
+    const [wallet1] = await ethers.getSigners();
+    acc = wallet1;
+    indexContract = await ethers.getContractAt(
+      "contracts/flashloan/Instapool/interfaces.sol:IndexInterface",
+      INDEX_ADDR
+    );
+
+    const masterAddr = await indexContract.master();
+
+    await impersonateAccounts([masterAddr]);
+
+    master = await ethers.getSigner(masterAddr);
+
+    const instaConnectorsFactory = await ethers.getContractFactory(
+      "InstaConnectorsV2",
+      master
+    );
+    instaConnectors = await instaConnectorsFactory.deploy(
+      indexContract.address
+    );
+
+    await instaConnectors.deployed();
+
+    const vaultId = await openVault(master);
+    const makerConnector = await deployMaker(master);
+    const aaveConnector = await deployAave(master);
+    instaPool = await deployInstaPoolV2Implementation(
+      vaultId,
+      makerConnector.address,
+      aaveConnector.address,
+      master
+    );
+
+    const connector = await deployConnector({
+      contract: contractName,
+      signer: master,
+      instaPool,
+    });
+
+    connectorAddr = connector.address;
+
+    const tx = await instaConnectors
+      .connect(master)
+      .addConnectors([connectorName], [connectorAddr]);
+
+    await tx.wait();
+  });
+
+  it("should cast the spells", async () => {
+    const DAI_ADDR = "0x6b175474e89094c44da98b954eedeac495271d0f";
+    const amt = ethers.utils.parseEther("30000000");
+    const spells = [
+      {
+        connector: "COMPOUND-A",
+        method: "deposit",
+        args: ["USDT-A", MAX_VALUE, 0, 12122],
+      },
+      {
+        connector: "COMPOUND-A",
+        method: "withdraw",
+        args: ["USDT-A", 0, 12122, 0],
+      },
+      {
+        connector: connectorName,
+        method: "flashPayback",
+        args: [DAI_ADDR, amt, 0, 0],
+      },
+    ];
+
+    const encodeSpellsData = encodeSpells(spells);
+    const targetType = "string[]";
+    let argTypes = [targetType, "bytes[]"];
+    const calldata = Web3.eth.abi.encodeParameters(argTypes, [
+      encodeSpellsData.targets,
+      encodeSpellsData.spells,
+    ]);
+
+    const flashSpells = [
+      {
+        connector: connectorName,
+        method: "flashBorrowAndCast",
+        args: [DAI_ADDR, amt, 0, calldata],
+      },
+    ];
   });
 });

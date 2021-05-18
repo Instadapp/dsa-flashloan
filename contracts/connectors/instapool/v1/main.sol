@@ -13,6 +13,8 @@ import { Events } from ".././events.sol";
 contract LiquidityResolver is DSMath, Stores, Variables, Events {
     using SafeERC20 for IERC20;
 
+    constructor(address _instaPool) Variables(_instaPool) {}
+
     /**
      * @dev Borrow Flashloan and Cast spells.
      * @param token Token Address.
@@ -63,6 +65,7 @@ contract LiquidityResolver is DSMath, Stores, Variables, Events {
 
 contract ConnectInstaPool is LiquidityResolver {
     string public name = "Instapool-v2.2";
+    constructor(address _instaPool) public LiquidityResolver(_instaPool) {}
 
     /**
      * @dev Connector Details.
