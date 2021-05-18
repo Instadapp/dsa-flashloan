@@ -178,11 +178,11 @@ function encodeSpells(spells) {
   const targets = spells.map((a) => a.connector);
   const calldatas = spells.map((a) => {
     const functionName = a.method;
-    console.log(functionName)
+    console.log(functionName);
     const abi = abis[a.connector].find((b) => {
       return b.name === functionName;
     });
-    console.log(functionName)
+    console.log(functionName);
     if (!abi) throw new Error("Couldn't find function");
     return web3.eth.abi.encodeFunctionCall(abi, a.args);
   });
@@ -468,7 +468,7 @@ describe("ConnectV2InstaPool connector", () => {
     ];
 
     const calldata = encodeFlashCastData(spells);
-    console.log("calldata", calldata)
+    console.log("calldata", calldata);
 
     const flashSpells = [
       {
@@ -482,12 +482,12 @@ describe("ConnectV2InstaPool connector", () => {
     const dsa = await createDSA(master);
 
     // add m1 impl
-    m1Impl = await ethers.getContractAt("InstaImplementationM1", dsa.address);
+    m1Impl = await ethers.getContractAt("InstaImplementationM1", dsa, master);
 
     // white listed
     await whitelistSigs("cast(string[],bytes[],address)", instaPool, master);
 
-    // m1Impl.cast(...encodeSpells(flashSpells), "0x")
+    console.log("hey?");
     await m1Impl.cast(...encodeSpells(flashSpells), master.address);
   });
 });
