@@ -178,11 +178,11 @@ function encodeSpells(spells) {
   const targets = spells.map((a) => a.connector);
   const calldatas = spells.map((a) => {
     const functionName = a.method;
-    // console.log(functionName)
+    console.log(functionName)
     const abi = abis[a.connector].find((b) => {
       return b.name === functionName;
     });
-    // console.log(functionName)
+    console.log(functionName)
     if (!abi) throw new Error("Couldn't find function");
     return web3.eth.abi.encodeFunctionCall(abi, a.args);
   });
@@ -386,8 +386,8 @@ function encodeFlashCastData(spells, version) {
   const targetType = Number(version) === 1 ? "address[]" : "string[]";
   let argTypes = [targetType, "bytes[]"];
   return web3.eth.abi.encodeParameters(argTypes, [
-    encodeSpellsData.targets,
-    encodeSpellsData.spells,
+    encodeSpellsData[0],
+    encodeSpellsData[1],
   ]);
 }
 
@@ -468,6 +468,7 @@ describe("ConnectV2InstaPool connector", () => {
     ];
 
     const calldata = encodeFlashCastData(spells);
+    console.log("calldata", calldata)
 
     const flashSpells = [
       {
