@@ -78,7 +78,6 @@ async function transferVault(vaultId, newAddr, signer) {
 }
 
 async function impersonateAndTransfer(amt, token, toAddr) {
-  console.log({ amt, token, toAddr });
   const signer = await ethers.getSigner(token.holder);
 
   const contract = await ethers.getContractAt(
@@ -168,7 +167,6 @@ async function createDSA(signer) {
   const indexContract = new ethers.Contract(INDEX_ADDR, InstaIndexABI, signer);
 
   const tx = await indexContract.build(signer.address, 2, signer.address);
-  console.log("in");
   const addr = (await tx.wait()).events[1].args.account;
 
   return addr;
@@ -178,11 +176,9 @@ function encodeSpells(spells) {
   const targets = spells.map((a) => a.connector);
   const calldatas = spells.map((a) => {
     const functionName = a.method;
-    console.log(functionName);
     const abi = abis[a.connector].find((b) => {
       return b.name === functionName;
     });
-    console.log(functionName);
     if (!abi) throw new Error("Couldn't find function");
     return web3.eth.abi.encodeFunctionCall(abi, a.args);
   });
@@ -411,15 +407,9 @@ describe("ConnectV2InstaPool connector", () => {
 
     master = await ethers.getSigner(masterAddr);
 
-    const instaConnectorsFactory = await ethers.getContractFactory(
-      "InstaConnectorsV2",
-      master
+    instaConnectors = await ethers.getContractAt(
+      "InstaConnectorsV2", "0x97b0B3A8bDeFE8cB9563a3c610019Ad10DB8aD11", master
     );
-    instaConnectors = await instaConnectorsFactory.deploy(
-      indexContract.address
-    );
-
-    await instaConnectors.deployed();
 
     const vaultId = await openVault(master);
     const makerConnector = await deployMaker(master);
@@ -439,6 +429,11 @@ describe("ConnectV2InstaPool connector", () => {
 
     connectorAddr = connector.address;
 
+    await impersonateAndTransfer(1000, TOKEN_ADDR.DAI, instaPool.address);
+    await impersonateAndTransfer(1000, TOKEN_ADDR.USDC, instaPool.address);
+    await impersonateAndTransfer(1000, TOKEN_ADDR.WETH, instaPool.address);
+    await impersonateAndTransfer(1000, TOKEN_ADDR.USDT, instaPool.address);
+
     const tx = await instaConnectors
       .connect(master)
       .addConnectors([connectorName], [connectorAddr]);
@@ -447,8 +442,8 @@ describe("ConnectV2InstaPool connector", () => {
   });
 
   it("should cast the spells", async () => {
-    const DAI_ADDR = "0x6b175474e89094c44da98b954eedeac495271d0f";
-    const amt = "25657657732544334267823451";
+    const USDT_ADDR = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+    const amt = "25653423451";
     const spells = [
       {
         connector: "COMPOUND-A",
@@ -458,23 +453,22 @@ describe("ConnectV2InstaPool connector", () => {
       {
         connector: "COMPOUND-A",
         method: "withdraw",
-        args: ["USDT-A", 0, 12122, 0],
+        args: ["USDT-A", 0, 12122, 3487],
       },
       {
         connector: connectorName,
         method: "flashPayback",
-        args: [DAI_ADDR, amt, 0, 0],
+        args: [USDT_ADDR, 0, 3487, 0],
       },
     ];
 
     const calldata = encodeFlashCastData(spells);
-    console.log("calldata", calldata);
 
     const flashSpells = [
       {
         connector: connectorName,
         method: "flashBorrowAndCast",
-        args: [DAI_ADDR, amt, 0, calldata],
+        args: [USDT_ADDR, amt, 0, calldata],
       },
     ];
 
@@ -487,7 +481,6 @@ describe("ConnectV2InstaPool connector", () => {
     // white listed
     await whitelistSigs("cast(string[],bytes[],address)", instaPool, master);
 
-    console.log("hey?");
     await m1Impl.cast(...encodeSpells(flashSpells), master.address);
   });
 });
