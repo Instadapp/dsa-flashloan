@@ -617,7 +617,7 @@ contract DydxFlashloaner is Resolver, ICallee, DydxFlashloanBase, DSMath {
     }
 }
 
-contract InstaPool is DydxFlashloaner {
+contract InstaPoolDep is DydxFlashloaner {
     constructor(
         uint _vaultId
     ) public {

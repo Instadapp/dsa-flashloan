@@ -213,6 +213,6 @@ contract MasterResolver is BasicResolver {
 }
 
 
-contract ConnectCompound is MasterResolver {
+contract ConnectCompoundDep is MasterResolver {
     string public name = "Compound-v1.0";
 }

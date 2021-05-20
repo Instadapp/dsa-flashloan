@@ -47,7 +47,6 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
     * @param _sigs list of sigs
     * @param _whitelist list of bools indicate whitelist/blacklist
     */
-
     function whitelistSigs(bytes4[] memory _sigs, bool[] memory _whitelist) public isMaster {
         require(_sigs.length == _whitelist.length, "arr-lengths-unequal");
         for (uint i = 0; i < _sigs.length; i++) {
@@ -57,6 +56,15 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         }
     }
 
+    function updateMakerConnect(address _makerConnect) external isMaster {
+        require(_makerConnect != address(0), "not-valid-address");
+        makerConnect = _makerConnect;
+    }
+
+    function updateAaveV2Connect(address _aaveV2Connect) external isMaster {
+        require(_aaveV2Connect != address(0), "not-valid-address");
+        aaveV2Connect = _aaveV2Connect;
+    }
     
     function callFunction(
         address sender,
@@ -71,7 +79,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             (address, uint256, address, uint256, bytes)
         );
 
-        bool isWeth = cd.route == 1 || cd.token == ethAddr;
+        bool isWeth = cd.route != 0 || cd.token == ethAddr;
         if (isWeth) {
             wethContract.withdraw(wethContract.balanceOf(address(this)));
         }

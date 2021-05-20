@@ -214,6 +214,6 @@ contract BasicResolver is AaveHelpers {
     }
 }
 
-contract ConnectAave is BasicResolver {
+contract ConnectAaveDep is BasicResolver {
     string public name = "Aave-v1";
 }

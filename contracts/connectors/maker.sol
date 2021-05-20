@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.0;
 interface TokenInterface {
     function approve(address, uint) external;
     function transfer(address, uint) external;
@@ -258,7 +258,7 @@ contract BasicResolver is MakerHelpers {
 
         if (isGemEth(address(tokenContract))) {
             _amt = _amt == uint(-1) ? address(this).balance : _amt;
-            tokenContract.deposit.value(_amt)();
+            tokenContract.deposit{value: _amt}();
         } else {
             _amt = _amt == uint(-1) ?  tokenContract.balanceOf(address(this)) : _amt;
         }
