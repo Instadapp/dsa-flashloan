@@ -28,7 +28,7 @@ module.exports = {
     hardhat: {
       forking: {
         url: alchemyUrl,
-        blockNumber: 12418695,
+        blockNumber: 12460086,
       },
     },
     mainnet: {
