@@ -11,7 +11,7 @@ async function main() {
         "\n\n Deploying Contracts to kovan..."
       );
     }
-    const MAKER_VAULT_ID = 12;
+    const MAKER_VAULT_ID = 24024;
     const INSTA_MASTER_PROXY = "0xa471D83e526B6b5D6c876088D34834B44D4064ff"
 
     if (MAKER_VAULT_ID === 0) throw new Error("Set vault Id")
@@ -22,7 +22,7 @@ async function main() {
 
     console.log("MakerConnector deployed: ", makerConnector.address);
 
-    const ConnectAave = await ethers.getContractFactory("ConnectMaker");
+    const ConnectAave = await ethers.getContractFactory("ConnectAave");
     const connectAave = await ConnectAave.deploy();
     await connectAave.deployed();
 
@@ -56,8 +56,6 @@ async function main() {
     const InstaPoolV2Proxy = await ethers.getContractAt("InstaPoolV2Implementation", instaPoolV2.address);
     await InstaPoolV2Proxy.initialize(MAKER_VAULT_ID, makerConnector.address, connectAave.address)
 
-
-
     if (hre.network.name === "mainnet" || hre.network.name === "kovan") {
         await hre.run("verify:verify", {
             address: makerConnector.address,
@@ -77,9 +75,9 @@ async function main() {
 
         await hre.run("verify:verify", {
             address: instaPoolV2.address,
-            constructorArguments: [instaPoolV2Implementation.address, INSTA_MASTER_PROXY.address, "0x"],
-            }
-        )
+            constructorArguments: [instaPoolV2Implementation.address, INSTA_MASTER_PROXY, "0x"],
+            contract: "contracts/proxy/Instapool.sol:InstaPoolV2"
+        })
 
         await hre.run("verify:verify", {
           address: connectInstaPool.address,
