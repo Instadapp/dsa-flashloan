@@ -104,26 +104,47 @@ contract Helper is Setup, DSMath {
         }
     }
 
-    function masterSpell(address _target, bytes calldata _data) external isMaster {
-        spell(_target, _data);
+    function makerSpell(bytes memory _dataOne, bytes memory _dataTwo) {
+        spell(makerConnect, _dataOne);
+        spell(makerConnect, _dataTwo);
     }
 
-    function selectBorrow(uint256 route, address token, uint256 amt) internal {
+    function aaveSpell(bytes memory _dataOne, bytes memory _dataTwo) {
+        spell(aaveV2Connect, _dataOne);
+        spell(aaveV2Connect, _dataTwo);
+    }
+    
+    function compoundSpell(bytes memory _dataOne, bytes memory _dataTwo) {
+        spell(compoundConnect, _dataOne);
+        spell(compoundConnect, _dataTwo);
+    }
+
+    function selectBorrow(uint256 route, address token, uint256 amt) internal returns (uint) {
         if (route == 0) {
-            return;
-        } else if (route == 1) {
+            return route;
+        }
+        if (route == 1) {
             bytes memory _dataOne = abi.encodeWithSignature("deposit(uint256,uint256)", vaultId, uint256(-1));
             bytes memory _dataTwo = abi.encodeWithSignature("borrow(uint256,uint256)", vaultId, amt);
-            spell(makerConnect, _dataOne);
-            spell(makerConnect, _dataTwo);
-        } else if (route == 2) {
+            try makerSpell(_dataOne, _dataTwo) {
+            } catch (bytes memory _err) {
+                route = 2;
+            }
+        }
+        if (route == 2) {
             bytes memory _dataOne = abi.encodeWithSignature("deposit(address,uint256)", ethAddr, uint256(-1));
             bytes memory _dataTwo = abi.encodeWithSignature("borrow(address,uint256,uint256)", token, amt, 2);
-            spell(aaveV2Connect, _dataOne);
-            spell(aaveV2Connect, _dataTwo);
-        } else {
-            revert("route-not-found");
+            try aaveSpell(_dataOne, _dataTwo) {
+            } catch (bytes memory _err) {
+                route = 3;
+            }
         }
+        if (route == 3) {
+            bytes memory _dataOne = abi.encodeWithSignature("deposit(address,uint256)", ethAddr, uint256(-1));
+            bytes memory _dataTwo = abi.encodeWithSignature("borrow(address,uint256)", token, amt);
+            compoundSpell(_dataOne, _dataTwo);
+        }
+        return route;
     }
 
     function selectPayback(uint256 route, address token) internal {
@@ -139,6 +160,11 @@ contract Helper is Setup, DSMath {
             bytes memory _dataTwo = abi.encodeWithSignature("withdraw(address,uint256)", ethAddr, uint256(-1));
             spell(aaveV2Connect, _dataOne);
             spell(aaveV2Connect, _dataTwo);
+        } else if (route == 3) {
+            bytes memory _dataOne = abi.encodeWithSignature("payback(address,uint256,uint256)", token, uint256(-1), 2);
+            bytes memory _dataTwo = abi.encodeWithSignature("withdraw(address,uint256)", ethAddr, uint256(-1));
+            spell(compoundConnect, _dataOne);
+            spell(compoundConnect, _dataTwo);
         } else {
             revert("route-not-found");
         }
