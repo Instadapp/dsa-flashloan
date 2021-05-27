@@ -115,7 +115,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             uint256 dydxDaiAmt = daiContract.balanceOf(soloAddr);
             if (amount > dydxDaiAmt) {
                 uint256 dydxWEthAmt = wethContract.balanceOf(soloAddr);
-                route = 1;
+                route = 3;
                 _amount = sub(dydxWEthAmt, 10000);
                 _token = wethAddr;
             } else {
