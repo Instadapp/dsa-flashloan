@@ -65,6 +65,11 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         require(_aaveV2Connect != address(0), "not-valid-address");
         aaveV2Connect = _aaveV2Connect;
     }
+
+    function updateCompoundConnect(address _compoundConnect) external isMaster {
+        require(_compoundConnect != address(0), "not-valid-address");
+        compoundConnect = _compoundConnect;
+    }
     
     function callFunction(
         address sender,
@@ -111,6 +116,16 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             if (amount > dydxDaiAmt) {
                 uint256 dydxWEthAmt = wethContract.balanceOf(soloAddr);
                 route = 1;
+                _amount = sub(dydxWEthAmt, 10000);
+                _token = wethAddr;
+            } else {
+                _token = token;
+            }
+        } else if (token == usdcAddr) {
+            uint256 dydxUsdcAmt = usdcContract.balanceOf(soloAddr);
+            if (amount > dydxUsdcAmt) {
+                uint256 dydxWEthAmt = wethContract.balanceOf(soloAddr);
+                route = 3;
                 _amount = sub(dydxWEthAmt, 10000);
                 _token = wethAddr;
             } else {

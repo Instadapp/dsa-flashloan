@@ -128,7 +128,7 @@ contract Helper is Setup, DSMath {
             bytes memory _dataTwo = abi.encodeWithSignature("borrow(uint256,uint256)", vaultId, amt);
             try makerSpell(_dataOne, _dataTwo) {
             } catch (bytes memory _err) {
-                route = 2;
+                route = 3;
             }
         }
         if (route == 2) {
@@ -136,13 +136,21 @@ contract Helper is Setup, DSMath {
             bytes memory _dataTwo = abi.encodeWithSignature("borrow(address,uint256,uint256)", token, amt, 2);
             try aaveSpell(_dataOne, _dataTwo) {
             } catch (bytes memory _err) {
+                _dataOne = abi.encodeWithSignature("deposit(address,uint256)", ethAddr, uint256(-1));
+                _dataTwo = abi.encodeWithSignature("borrow(address,uint256)", token, amt);
+                compoundSpell(_dataOne, _dataTwo);
                 route = 3;
             }
-        }
-        if (route == 3) {
+        } else if (route == 3) {
             bytes memory _dataOne = abi.encodeWithSignature("deposit(address,uint256)", ethAddr, uint256(-1));
             bytes memory _dataTwo = abi.encodeWithSignature("borrow(address,uint256)", token, amt);
-            compoundSpell(_dataOne, _dataTwo);
+            try compoundSpell(_dataOne, _dataTwo) {
+            } catch (bytes memory _err) {
+                _dataOne = abi.encodeWithSignature("deposit(address,uint256)", ethAddr, uint256(-1));
+                _dataTwo = abi.encodeWithSignature("borrow(address,uint256,uint256)", token, amt, 2);
+                aaveSpell(_dataOne, _dataTwo);
+                route = 2;
+            }
         }
         return route;
     }
