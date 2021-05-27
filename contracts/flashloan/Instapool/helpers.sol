@@ -136,7 +136,7 @@ contract Helper is Setup, DSMath {
                 compoundSpell(token, amt);
                 return route = 3;
             }
-        } else if (route == 3) {
+        } else {
             try compoundSpell(token, amt) {
             } catch (bytes memory _err) {
                 if (token == daiAddr) {
