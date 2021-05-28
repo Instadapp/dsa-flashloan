@@ -12,7 +12,4 @@ contract Variables {
 
     // Whitelisted Sigs;
     mapping (bytes4 => bool) public whitelistedSigs;
-
-    // Compound connector
-    address public compoundConnect;
 }

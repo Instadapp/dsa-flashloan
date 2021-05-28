@@ -84,13 +84,14 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             wethContract.withdraw(wethContract.balanceOf(address(this)));
         }
 
-        cd.route = selectBorrow(cd.route, cd.token, cd.amount);
+        selectBorrow(cd.route, cd.token, cd.amount);
 
         if (cd.token == ethAddr) {
             payable(cd.dsa).transfer(cd.amount);
         } else {
             IERC20(cd.token).safeTransfer(cd.dsa, cd.amount);
         }
+
 
         Address.functionCall(cd.dsa, cd.callData, "DSA-flashloan-fallback-failed");
 
@@ -116,7 +117,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             } else {
                 _token = token;
             }
-        } else if (token != ethAddr && token != usdcAddr && token != wethAddr) {
+        } else if (token != ethAddr && token != usdcAddr) {
             uint256 dydxWEthAmt = wethContract.balanceOf(soloAddr);
             route = 2;
             _amount = sub(dydxWEthAmt, 10000);
@@ -170,25 +171,19 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
     ) external isDSA isWhitelisted(data) {	
         routeDydx(token, amount, data);	
     }
-
-    function masterSpell(address _target, bytes calldata _data) external isMaster {
-        spell(_target, _data);
-    }
 }
 
 contract InstaPoolV2Implementation is DydxFlashloaner {
     function initialize(
         uint256 _vaultId,
         address _makerConnect,
-        address _aaveV2Connect,
-        address _compoundConnect
+        address _aaveV2Connect
     ) public {
-        require(vaultId == 0 && makerConnect == address(0) && aaveV2Connect == address(0) && compoundConnect == address(0), "already-Initialized");
+        require(vaultId == 0 && makerConnect == address(0) && aaveV2Connect == address(0), "already-Initialized");
         wethContract.approve(wethAddr, uint256(-1));
         vaultId = _vaultId;
         makerConnect = _makerConnect;
         aaveV2Connect = _aaveV2Connect;
-        compoundConnect = _compoundConnect;
     }
 
     receive() external payable {}
