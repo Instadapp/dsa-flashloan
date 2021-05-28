@@ -65,6 +65,11 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         require(_aaveV2Connect != address(0), "not-valid-address");
         aaveV2Connect = _aaveV2Connect;
     }
+
+    function updateCompoundConnect(address _compoundConnect) external isMaster {
+        require(_compoundConnect != address(0), "not-valid-address");
+        compoundConnect = _compoundConnect;
+    }
     
     function callFunction(
         address sender,
@@ -79,7 +84,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             (address, uint256, address, uint256, bytes)
         );
 
-        bool isWeth = cd.route != 0 || cd.token == ethAddr;
+        bool isWeth = (cd.route != 0 && cd.token != wethAddr) || cd.token == ethAddr;
         if (isWeth) {
             wethContract.withdraw(wethContract.balanceOf(address(this)));
         }
@@ -92,7 +97,6 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             IERC20(cd.token).safeTransfer(cd.dsa, cd.amount);
         }
 
-
         Address.functionCall(cd.dsa, cd.callData, "DSA-flashloan-fallback-failed");
 
         selectPayback(cd.route, cd.token);
@@ -102,28 +106,15 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         }
     }
 
-    function routeDydx(address token, uint256 amount, bytes memory data) internal {
+    function routeDydx(address token, uint256 amount, uint256 route, bytes memory data) internal {
         uint256 _amount = amount;
 
-        uint256 route = 0;
-        address _token;
-        if (token == daiAddr) {
-            uint256 dydxDaiAmt = daiContract.balanceOf(soloAddr);
-            if (amount > dydxDaiAmt) {
-                uint256 dydxWEthAmt = wethContract.balanceOf(soloAddr);
-                route = 1;
-                _amount = sub(dydxWEthAmt, 10000);
-                _token = wethAddr;
-            } else {
-                _token = token;
-            }
-        } else if (token != ethAddr && token != usdcAddr) {
+        address _token = token == ethAddr ? wethAddr : token;
+        if (route != 0) {
             uint256 dydxWEthAmt = wethContract.balanceOf(soloAddr);
             route = 2;
             _amount = sub(dydxWEthAmt, 10000);
             _token = wethAddr;
-        } else {
-            _token = token == ethAddr ? wethAddr : token;
         }
         
         IERC20 _tokenContract = IERC20(_token);
@@ -154,7 +145,7 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
             uint _dif = wmul(convertTo18(_amount, _decimals), 200000000000); // Taking margin of 0.0000002%
             require(convertTo18(sub(initialBal, finalBal), _decimals) <= _dif, "token-amount-paid-less");
         }
-            
+
         emit LogFlashLoan(
             msg.sender,
             token,
@@ -166,10 +157,11 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
 
     function initiateFlashLoan(	
         address token,	
-        uint256 amount,	
+        uint256 amount,
+        uint256 route,
         bytes calldata data	
     ) external isDSA isWhitelisted(data) {	
-        routeDydx(token, amount, data);	
+        routeDydx(token, amount, route, data);	
     }
 }
 

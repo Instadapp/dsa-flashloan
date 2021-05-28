@@ -118,6 +118,11 @@ contract Helper is Setup, DSMath {
             spell(makerConnect, _dataTwo);
         } else if (route == 2) {
             bytes memory _dataOne = abi.encodeWithSignature("deposit(address,uint256)", ethAddr, uint256(-1));
+            bytes memory _dataTwo = abi.encodeWithSignature("borrow(address,uint256)", token, amt);
+            spell(compoundConnect, _dataOne);
+            spell(compoundConnect, _dataTwo);
+        } else if (route == 3) {
+            bytes memory _dataOne = abi.encodeWithSignature("deposit(address,uint256)", ethAddr, uint256(-1));
             bytes memory _dataTwo = abi.encodeWithSignature("borrow(address,uint256,uint256)", token, amt, 2);
             spell(aaveV2Connect, _dataOne);
             spell(aaveV2Connect, _dataTwo);
@@ -135,6 +140,11 @@ contract Helper is Setup, DSMath {
             spell(makerConnect, _dataOne);
             spell(makerConnect, _dataTwo);
         } else if (route == 2) {
+            bytes memory _dataOne = abi.encodeWithSignature("payback(address,uint256)", token, uint256(-1));
+            bytes memory _dataTwo = abi.encodeWithSignature("withdraw(address,uint256)", ethAddr, uint256(-1));
+            spell(compoundConnect, _dataOne);
+            spell(compoundConnect, _dataTwo);
+        } else if (route == 3) {
             bytes memory _dataOne = abi.encodeWithSignature("payback(address,uint256,uint256)", token, uint256(-1), 2);
             bytes memory _dataTwo = abi.encodeWithSignature("withdraw(address,uint256)", ethAddr, uint256(-1));
             spell(aaveV2Connect, _dataOne);
