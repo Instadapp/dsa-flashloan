@@ -2,7 +2,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 interface InstaFlashV2Interface {
-    function initiateFlashLoan(address token, uint256 amt, bytes calldata data) external;
+    function initiateFlashLoan(address token, uint256 amt, uint256 route, bytes calldata data) external;
 }
 
 

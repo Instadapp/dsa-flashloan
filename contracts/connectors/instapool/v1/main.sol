@@ -2,6 +2,7 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TokenInterface } from "../../../common/interfaces.sol";
 import { AccountInterface } from "../interfaces.sol";
@@ -22,7 +23,7 @@ contract LiquidityResolver is DSMath, Stores, Variables, Events {
     function flashBorrowAndCast(
         address token,
         uint amt,
-        uint /* route */,
+        uint route,
         bytes memory data
     ) external payable {
         AccountInterface(address(this)).enable(address(instaPool));
@@ -30,7 +31,7 @@ contract LiquidityResolver is DSMath, Stores, Variables, Events {
 
         bytes memory callData = abi.encodeWithSignature("cast(address[],bytes[],address)", _targets, callDatas, address(instaPool));
 
-        instaPool.initiateFlashLoan(token, amt, callData);
+        instaPool.initiateFlashLoan(token, amt, route, callData);
 
         emit LogFlashBorrow(token, amt);
         AccountInterface(address(this)).disable(address(instaPool));
@@ -53,7 +54,11 @@ contract LiquidityResolver is DSMath, Stores, Variables, Events {
         
         IERC20 tokenContract = IERC20(token);
 
-        tokenContract.safeTransfer(address(instaPool), _amt);
+        if (token == ethAddr) {
+            Address.sendValue(payable(address(instaPool)), _amt);
+        } else {
+            tokenContract.safeTransfer(address(instaPool), _amt);
+        }
 
         setUint(setId, _amt);
 
