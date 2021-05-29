@@ -112,7 +112,6 @@ contract DydxFlashloaner is Helper, ICallee, DydxFlashloanBase {
         address _token = token == ethAddr ? wethAddr : token;
         if (route != 0) {
             uint256 dydxWEthAmt = wethContract.balanceOf(soloAddr);
-            route = 2;
             _amount = sub(dydxWEthAmt, 10000);
             _token = wethAddr;
         }
