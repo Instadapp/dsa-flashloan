@@ -68,5 +68,5 @@ contract LiquidityResolver is DSMath, Stores, Variables, Events {
 }
 
 contract ConnectV2InstaPool is LiquidityResolver {
-    string public name = "Instapool-v1";
+    string public name = "Instapool-v1.1";
 }

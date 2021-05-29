@@ -60,7 +60,7 @@ contract Helpers {
 }
 
 
-contract InstaPoolMapping is Helpers {
+contract InstaPoolCompoundMapping is Helpers {
     string constant public name = "Instapool-Compound-Mapping-v1";
     constructor(address[] memory ctokens) public {
         address ethAddress = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
