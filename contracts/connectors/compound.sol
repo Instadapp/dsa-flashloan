@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.7.0;
 
 interface CTokenInterface {
     function mint(uint mintAmount) external returns (uint);
@@ -71,8 +71,7 @@ contract Helpers is DSMath {
     }
 
     function getAddressWETH() internal pure returns (address) {
-        // return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // mainnet
-        return 0xd0A1E359811322d97991E03f863a0C30C2cF029C; // kovan
+        return 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2; // mainnet
     }
 
     function isETH(address token) internal pure returns(bool) {
@@ -86,15 +85,14 @@ contract CompoundHelpers is Helpers {
      * @dev Return Compound Comptroller Address
      */
     function getComptrollerAddress() internal pure returns (address) {
-        // return 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B; // main
-        return 0x1f5D7F3CaAC149fE41b8bd62A3673FE6eC0AB73b; // kovan
+        return 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B; // main
     }
 
     /**
      * @dev Return InstaDApp Mapping Addresses
      */
     function getMappingAddr() internal pure returns (address) {
-        return 0xe81F70Cc7C0D46e12d70efc60607F16bbD617E88; // InstaMapping Address
+        return 0x309eFfce30436C50a872fd9d2B431D7a77341f4C; // InstaPoolCompoundMapping Address
     }
 
 
@@ -127,7 +125,7 @@ contract BasicResolver is CompoundHelpers {
         enterMarket(cToken);
         if (isETH(token)) {
             _amt = _amt == uint(-1) ? address(this).balance : _amt;
-            CETHInterface(cToken).mint.value(_amt)();
+            CETHInterface(cToken).mint{value: _amt}();
         } else {
             TokenInterface tokenContract = TokenInterface(token);
             _amt = _amt == uint(-1) ? tokenContract.balanceOf(address(this)) : _amt;
@@ -182,7 +180,7 @@ contract BasicResolver is CompoundHelpers {
 
         if (isETH(token)) {
             require(address(this).balance >= _amt, "not-enough-eth");
-            CETHInterface(cToken).repayBorrow.value(_amt)();
+            CETHInterface(cToken).repayBorrow{value: _amt}();
         } else {
             TokenInterface tokenContract = TokenInterface(token);
             require(tokenContract.balanceOf(address(this)) >= _amt, "not-enough-token");
@@ -194,7 +192,7 @@ contract BasicResolver is CompoundHelpers {
     }
 }
 
-contract MasterResolver is BasicResolver {
+contract MarketsResolver is BasicResolver {
     /**
      * @dev enter compound market
      */
@@ -213,6 +211,6 @@ contract MasterResolver is BasicResolver {
 }
 
 
-contract ConnectCompoundDep is MasterResolver {
+contract ConnectCompound is MarketsResolver {
     string public name = "Compound-v1.0";
 }

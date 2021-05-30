@@ -15,4 +15,5 @@ contract Variables {
 
     // Compound connector
     address public compoundConnect;
+
 }
