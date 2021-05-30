@@ -35,7 +35,7 @@ module.exports = {
       url: alchemyUrl,
       accounts: [`0x${PRIVATE_KEY}`],
       timeout: 150000,
-      gasPrice: parseInt(utils.parseUnits("67", "gwei"))
+      gasPrice: parseInt(utils.parseUnits("34", "gwei"))
     },
   },
   etherscan: {

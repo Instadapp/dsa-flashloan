@@ -67,12 +67,12 @@ contract LiquidityResolver is DSMath, Stores, Variables, Events {
 }
 
 contract ConnectInstaPool is LiquidityResolver {
-    string public name = "Instapool-v2.2";
+    string public name = "Instapool-v2.3";
 
     /**
      * @dev Connector Details.
     */
     function connectorID() public pure returns(uint _type, uint _id) {
-        (_type, _id) = (1, 97);
+        (_type, _id) = (1, 99);
     }
 }
