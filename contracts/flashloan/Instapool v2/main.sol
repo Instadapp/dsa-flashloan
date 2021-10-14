@@ -10,34 +10,10 @@ import {
     IndexInterface,
     ListInterface,
     TokenInterface,
-    DSAInterface
+    DSAInterface,
+    IAaveLending
 } from "./interfaces.sol";
 
-interface IAaveLending {
-    function flashLoan(
-        address receiverAddress,
-        address[] calldata assets,
-        uint256[] calldata amounts,
-        uint256[] calldata modes,
-        address onBehalfOf,
-        bytes calldata params,
-        uint16 referralCode
-    ) external;
-}
-
-// interface IFlashLoanReceiver {
-//   function executeOperation(
-//     address[] calldata assets,
-//     uint256[] calldata amounts,
-//     uint256[] calldata premiums,
-//     address initiator,
-//     bytes calldata params
-//   ) external returns (bool);
-
-//   function ADDRESSES_PROVIDER() external view returns (ILendingPoolAddressesProvider);
-
-//   function LENDING_POOL() external view returns (ILendingPool);
-// }
 
 contract AaveFlashloaner is Helper {
     using SafeERC20 for IERC20;
@@ -72,7 +48,7 @@ contract AaveFlashloaner is Helper {
     * @param _sigs list of sigs
     * @param _whitelist list of bools indicate whitelist/blacklist
     */
-    function whitelistSigs(bytes4[] memory _sigs, bool[] memory _whitelist) public isMaster {
+    function whitelistSigs(bytes4[] memory _sigs, bool[] memory _whitelist) public onlyOwner {
         require(_sigs.length == _whitelist.length, "arr-lengths-unequal");
         for (uint i = 0; i < _sigs.length; i++) {
             require(!whitelistedSigs[_sigs[i]], "already-enabled");
@@ -188,8 +164,13 @@ contract InstaPoolV2Implementation is AaveFlashloaner {
     constructor(
         address instaIndex_,
         address wchainToken_,
-        address aaveLendingAddr_
-    ) AaveFlashloaner(instaIndex_, wchainToken_, aaveLendingAddr_) {}
+        address aaveLendingAddr_,
+        bytes4[] memory sigs
+    ) AaveFlashloaner(instaIndex_, wchainToken_, aaveLendingAddr_) {
+        for (uint i = 0; i < sigs.length; i++) {
+            whitelistedSigs[sigs[i]] = true;
+        }
+    }
 
     modifier intialized() {
         require(!initializeCheck, "already-initialized");
@@ -202,4 +183,5 @@ contract InstaPoolV2Implementation is AaveFlashloaner {
     }
 
     receive() external payable {}
+
 }

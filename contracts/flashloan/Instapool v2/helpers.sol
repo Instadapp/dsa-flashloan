@@ -4,10 +4,7 @@ import {
     IndexInterface,
     ListInterface,
     TokenInterface,
-    Account,
-    Actions,
-    Types,
-    ISoloMargin
+    IAaveLending
 } from "./interfaces.sol";
 
 import { DSMath } from "../../common/math.sol";
@@ -16,20 +13,9 @@ import {Variables} from "./variables.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-interface IAaveLending {
-    function flashLoan(
-        address receiverAddress,
-        address[] calldata assets,
-        uint256[] calldata amounts,
-        uint256[] calldata modes,
-        address onBehalfOf,
-        bytes calldata params,
-        uint16 referralCode
-    ) external;
-}
-
-contract Setup is Variables {
+contract Setup is Variables, Ownable {
     using SafeERC20 for IERC20;
 
     constructor(
@@ -55,14 +41,6 @@ contract Setup is Variables {
 
     address public immutable aaveLendingAddr;
     IAaveLending public immutable aaveLending;
-
-    /**
-    * @dev modifier to check if msg.sender is a master 
-    */
-    modifier isMaster() {
-        require(msg.sender == instaIndex.master(), "not-master");
-        _;
-    }
 
     /**
     * @dev Converts the encoded data to sig.
@@ -124,7 +102,7 @@ contract Helper is Setup, DSMath {
         }
     }
 
-    function masterSpell(address _target, bytes calldata _data) external isMaster {
+    function masterSpell(address _target, bytes calldata _data) external onlyOwner {
         spell(_target, _data);
     }
 
