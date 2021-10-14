@@ -61,6 +61,12 @@ contract Setup is Variables, Ownable {
         _;
     }
 
+    modifier intialized() {
+        require(!initializeCheck, "already-initialized");
+        _;
+        initializeCheck = true;
+    }
+
     /**
      * FOR SECURITY PURPOSE
      * only Smart DEFI Account can access the liquidity pool contract

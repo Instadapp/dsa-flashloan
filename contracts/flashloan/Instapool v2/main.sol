@@ -27,9 +27,8 @@ contract AaveFlashloaner is Helper {
 
     event LogFlashLoan(
         address indexed dsa,
-        address token,
-        uint256 amount,
-        uint route
+        address[] tokens,
+        uint256[] amounts
     );
 
     event LogWhitelistSig(bytes4 indexed sig, bool whitelist);
@@ -133,7 +132,11 @@ contract AaveFlashloaner is Helper {
             require(iniBals[i] <= finBals[i], "amount-paid-less");
         }
 
-        // TODO: Add event
+        emit LogFlashLoan(
+            msg.sender,
+            _tokens,
+            _amounts
+        );
     }
 
     function initiateFlashLoan(	
@@ -170,12 +173,6 @@ contract InstaPoolV2Implementation is AaveFlashloaner {
         for (uint i = 0; i < sigs.length; i++) {
             whitelistedSigs[sigs[i]] = true;
         }
-    }
-
-    modifier intialized() {
-        require(!initializeCheck, "already-initialized");
-        _;
-        initializeCheck = true;
     }
 
     function initialize() intialized() public {
