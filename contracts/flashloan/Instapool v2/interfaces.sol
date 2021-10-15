@@ -51,4 +51,6 @@ interface IAaveLending {
         bytes calldata params,
         uint16 referralCode
     ) external;
+
+    function FLASHLOAN_PREMIUM_TOTAL() external view returns (uint);
 }

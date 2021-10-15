@@ -3,6 +3,7 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import { Helper } from "./helpers.sol";
 
@@ -40,7 +41,14 @@ contract AaveFlashloaner is Helper {
     function checkWhitelisted(bytes4 _sig) public view returns(bool) {
         return whitelistedSigs[_sig];
     }
-    
+
+    function calFee(uint[] memory amts_) external view returns (uint[] memory finalAmts_, uint[] memory premiums_, uint fee_) {
+        fee_ = aaveLending.FLASHLOAN_PREMIUM_TOTAL();
+        for (uint i = 0; i < amts_.length; i++) {
+            premiums_[i] = (amts_[i] * fee_) / 10000;
+            finalAmts_[i] = finalAmts_[i] + premiums_[i];
+        }
+    }
 
     /**
     * @dev Whitelists / Blacklists a given sig
