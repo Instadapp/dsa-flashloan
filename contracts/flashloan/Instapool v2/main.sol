@@ -121,6 +121,7 @@ contract AaveFlashloaner is Helper {
         for (uint i = 0; i < _length; i++) {
             _tokenContracts[i] = IERC20(_tokens[i]);
             address _token = _tokens[i] == chainToken ? wchainToken : _tokens[i];
+            _tokens[i] = _token;
             if (_token == wchainToken) {
                 iniBals[i] = add(_tokenContracts[i].balanceOf(address(this)), address(this).balance);
             } else {
