@@ -118,7 +118,7 @@ contract AaveFlashloaner is Helper {
         uint[] memory iniBals = new uint[](_length);
         uint[] memory finBals = new uint[](_length);
         IERC20[] memory _tokenContracts = new IERC20[](_length);
-        for (uint i = _length; i < _length; i++) {
+        for (uint i = 0; i < _length; i++) {
             _tokenContracts[i] = IERC20(_tokens[i]);
             address _token = _tokens[i] == chainToken ? wchainToken : _tokens[i];
             if (_token == wchainToken) {
