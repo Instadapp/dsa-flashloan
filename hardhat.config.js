@@ -37,6 +37,13 @@ module.exports = {
       timeout: 150000,
       gasPrice: parseInt(utils.parseUnits("34", "gwei"))
     },
+    matic: {
+      url: "https://polygon-rpc.com/",
+      chainId: 137,
+      accounts: [`0x${PRIVATE_KEY}`],
+      timeout: 150000,
+      gasPrice: parseInt(utils.parseUnits("50", "gwei"))
+    },
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN

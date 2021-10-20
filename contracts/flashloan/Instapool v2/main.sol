@@ -63,6 +63,12 @@ contract AaveFlashloaner is Helper {
             emit LogWhitelistSig(_sigs[i], _whitelist[i]);
         }
     }
+
+    struct ExecuteOperationVariables {
+        uint256 _length;
+        IERC20[] _tokenContracts;
+        bool[] isWChainToken;
+    }
     
     function executeOperation(
         address[] calldata assets,
@@ -74,9 +80,11 @@ contract AaveFlashloaner is Helper {
         require(initiator == address(this), "not-same-sender");
         require(msg.sender == aaveLendingAddr, "not-aave-sender");
 
-        uint _length = assets.length;
-        IERC20[] memory _tokenContracts = new IERC20[](_length);
-        bool[] memory isWChainToken = new bool[](_length);
+        ExecuteOperationVariables memory e;
+
+        e._length = assets.length;
+        e._tokenContracts = new IERC20[](e._length);
+        e.isWChainToken = new bool[](e._length);
 
         CastData memory cd;
         (cd.dsa, cd.callData) = abi.decode(
@@ -84,24 +92,24 @@ contract AaveFlashloaner is Helper {
             (address, bytes)
         );
 
-        for (uint i = 0; i < _length; i++) {
-            _tokenContracts[i] = IERC20(assets[i]);
-            _tokenContracts[i].approve(aaveLendingAddr, amounts[i] + premiums[i]);
-            isWChainToken[i] = assets[i] == chainToken || assets[i] == wchainToken;
-            if (isWChainToken[i]) {
+        for (uint i = 0; i < e._length; i++) {
+            e._tokenContracts[i] = IERC20(assets[i]);
+            e._tokenContracts[i].approve(aaveLendingAddr, amounts[i] + premiums[i]);
+            e.isWChainToken[i] = assets[i] == chainToken;
+            if (e.isWChainToken[i]) {
                 wchainContract.withdraw(wchainContract.balanceOf(address(this)));
             }
             if (assets[i] == wchainToken) {
                 payable(cd.dsa).transfer(amounts[i]);
             } else {
-                _tokenContracts[i].safeTransfer(cd.dsa, amounts[i]);
+                e._tokenContracts[i].safeTransfer(cd.dsa, amounts[i]);
             }
         }
 
         Address.functionCall(cd.dsa, cd.callData, "DSA-flashloan-fallback-failed");
 
-        for (uint i = 0; i < _length; i++) {
-            if (isWChainToken[i]) {
+        for (uint i = 0; i < e._length; i++) {
+            if (e.isWChainToken[i]) {
                 wchainContract.deposit{value: address(this).balance}();
             }
         }
@@ -119,12 +127,11 @@ contract AaveFlashloaner is Helper {
         uint[] memory finBals = new uint[](_length);
         IERC20[] memory _tokenContracts = new IERC20[](_length);
         for (uint i = 0; i < _length; i++) {
-            require(_tokens[i] != wchainToken, "borrow-wchain-token-not-allowed");
+            _tokenContracts[i] = IERC20(_tokens[i]);
             address _token = _tokens[i] == chainToken ? wchainToken : _tokens[i];
-            _tokenContracts[i] = IERC20(_token);
             _tokens[i] = _token;
             if (_token == wchainToken) {
-                iniBals[i] = add(_tokenContracts[i].balanceOf(address(this)), address(this).balance);
+                iniBals[i] = add(wchainContract.balanceOf(address(this)), address(this).balance);
             } else {
                 iniBals[i] = _tokenContracts[i].balanceOf(address(this));
             }
@@ -172,21 +179,26 @@ contract AaveFlashloaner is Helper {
     }
 }
 
-contract InstaPoolV2Implementation is AaveFlashloaner {
+contract InstaPoolV2ImplementationV2 is AaveFlashloaner {
 
     constructor(
         address instaIndex_,
         address wchainToken_,
-        address aaveLendingAddr_,
-        bytes4[] memory sigs
+        address aaveLendingAddr_
     ) AaveFlashloaner(instaIndex_, wchainToken_, aaveLendingAddr_) {
+        
+    }
+
+    function initialize(
+        bytes4[] memory sigs,
+        address owner
+    ) intialized() public {
         for (uint i = 0; i < sigs.length; i++) {
             whitelistedSigs[sigs[i]] = true;
         }
-    }
-
-    function initialize() intialized() public {
         wchainContract.approve(wchainToken, uint256(-1));
+        _owner = owner;
+        emit OwnershipTransferred(address(0), owner);
     }
 
     receive() external payable {}

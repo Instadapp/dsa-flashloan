@@ -8,6 +8,4 @@ contract Variables {
     bool internal initializeCheck;
 
     address internal _owner;
-
-
 }

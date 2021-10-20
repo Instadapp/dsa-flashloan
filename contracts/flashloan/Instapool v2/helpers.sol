@@ -9,6 +9,8 @@ import {
 
 import { DSMath } from "../../common/math.sol";
 import {Ownable} from "./ownable.sol";
+import {Variables} from "./variables.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
