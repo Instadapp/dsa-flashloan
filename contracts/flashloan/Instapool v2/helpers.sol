@@ -8,12 +8,9 @@ import {
 } from "./interfaces.sol";
 
 import { DSMath } from "../../common/math.sol";
-
-import {Variables} from "./variables.sol";
-
+import {Ownable} from "./ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Setup is Variables, Ownable {
     using SafeERC20 for IERC20;
