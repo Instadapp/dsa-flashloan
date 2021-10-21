@@ -113,6 +113,7 @@ contract AaveFlashloaner is Helper {
                 wchainContract.deposit{value: address(this).balance}();
             }
         }
+        return true;
     }
 
     function routeAave(address[] memory _tokens, uint256[] memory _amounts, bytes memory data) internal {
