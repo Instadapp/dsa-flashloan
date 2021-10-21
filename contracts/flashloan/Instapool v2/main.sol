@@ -100,7 +100,7 @@ contract AaveFlashloaner is Helper {
                 wchainContract.withdraw(wchainContract.balanceOf(address(this)));
             }
             if (assets[i] == wchainToken) {
-                payable(cd.dsa).transfer(amounts[i]);
+                Address.sendValue(payable(cd.dsa), amounts[i]);
             } else {
                 e._tokenContracts[i].safeTransfer(cd.dsa, amounts[i]);
             }
