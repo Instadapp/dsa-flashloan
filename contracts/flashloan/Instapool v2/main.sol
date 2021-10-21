@@ -95,7 +95,7 @@ contract AaveFlashloaner is Helper {
         for (uint i = 0; i < e._length; i++) {
             e._tokenContracts[i] = IERC20(assets[i]);
             e._tokenContracts[i].approve(aaveLendingAddr, amounts[i] + premiums[i]);
-            e.isWChainToken[i] = assets[i] == chainToken;
+            e.isWChainToken[i] = assets[i] == chainToken || assets[i] == wchainToken;
             if (e.isWChainToken[i]) {
                 wchainContract.withdraw(wchainContract.balanceOf(address(this)));
             }
@@ -127,11 +127,12 @@ contract AaveFlashloaner is Helper {
         uint[] memory finBals = new uint[](_length);
         IERC20[] memory _tokenContracts = new IERC20[](_length);
         for (uint i = 0; i < _length; i++) {
-            _tokenContracts[i] = IERC20(_tokens[i]);
+            require(_tokens[i] != wchainToken, "borrow-wchain-token-not-allowed");
             address _token = _tokens[i] == chainToken ? wchainToken : _tokens[i];
+            _tokenContracts[i] = IERC20(_tokens[i]);
             _tokens[i] = _token;
             if (_token == wchainToken) {
-                iniBals[i] = add(wchainContract.balanceOf(address(this)), address(this).balance);
+                iniBals[i] = add(_tokenContracts[i].balanceOf(address(this)), address(this).balance);
             } else {
                 iniBals[i] = _tokenContracts[i].balanceOf(address(this));
             }
