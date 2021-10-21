@@ -129,8 +129,8 @@ contract AaveFlashloaner is Helper {
         for (uint i = 0; i < _length; i++) {
             require(_tokens[i] != wchainToken, "borrow-wchain-token-not-allowed");
             address _token = _tokens[i] == chainToken ? wchainToken : _tokens[i];
-            _tokenContracts[i] = IERC20(_tokens[i]);
             _tokens[i] = _token;
+            _tokenContracts[i] = IERC20(_tokens[i]);
             if (_token == wchainToken) {
                 iniBals[i] = add(_tokenContracts[i].balanceOf(address(this)), address(this).balance);
             } else {
