@@ -9,6 +9,8 @@
         "connectors": {
             "1": "0x2a26228e607ffD2aB2bD3aA49cBae0eDC6469Bf8",
             "2": "0x5806Af7AB22E2916fA582Ff05731Bf7C682387B2"
-        }
+        },
+        "InstaPoolV2ImplementationV2": "0xb6A15e7Dd81999792353119014A018378E104121",
+        "InstaPoolV2Proxy": "0xF77A5935f35aDD4C2f524788805293EF86B87560"
     }
 }
