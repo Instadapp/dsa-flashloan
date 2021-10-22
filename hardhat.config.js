@@ -35,14 +35,14 @@ module.exports = {
       url: alchemyUrl,
       accounts: [`0x${PRIVATE_KEY}`],
       timeout: 150000,
-      gasPrice: parseInt(utils.parseUnits("34", "gwei"))
+      gasPrice: parseInt(utils.parseUnits("60", "gwei"))
     },
     matic: {
       url: "https://polygon-rpc.com/",
       chainId: 137,
       accounts: [`0x${PRIVATE_KEY}`],
       timeout: 150000,
-      gasPrice: parseInt(utils.parseUnits("50", "gwei"))
+      gasPrice: parseInt(utils.parseUnits("60", "gwei"))
     },
   },
   etherscan: {
