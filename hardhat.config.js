@@ -4,6 +4,7 @@ require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-web3");
 require("@nomiclabs/hardhat-etherscan");
+require('hardhat-deploy');
 
 
 if (!process.env.ALCHEMY_URL) {
@@ -44,6 +45,13 @@ module.exports = {
       timeout: 150000,
       gasPrice: parseInt(utils.parseUnits("60", "gwei"))
     },
+    avax: {
+      url: 'https://api.avax.network/ext/bc/C/rpc',
+      chainId: 43114,
+      accounts: [`0x${PRIVATE_KEY}`],
+      timeout: 150000,
+      gasPrice: parseInt(utils.parseUnits("50", "gwei"))
+    }
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN

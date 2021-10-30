@@ -1,7 +1,9 @@
 const hre = require("hardhat");
-const { ethers } = hre;
+const { ethers, deployments, getUnnamedAccounts } = hre;
+const { deploy } = deployments;
 
 async function main() {
+    const deployer = (await getUnnamedAccounts())[0]
     let INSTA_MASTER_PROXY;
     let INSTA_INDEX;
     let AAVE_LENDING
@@ -30,30 +32,37 @@ async function main() {
         AAVE_LENDING = "0x8dff5e27ea6b7ac08ebfdf9eb090f32ee9a30fcf"
         W_CHAIN_TOKEN = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
         INSTA_MASTER = "0x90cF378A297C7eF6dabeD36eA5E112c6646BB3A4"
-    }
+    } else if (hre.network.name === "avax") {
+      console.log(
+        "\n\n Deploying Contracts to avax..."
+      );
+      INSTA_MASTER_PROXY = "0xa471D83e526B6b5D6c876088D34834B44D4064ff"
+      INSTA_INDEX = "0x6CE3e607C808b4f4C26B7F6aDAeB619e49CAbb25"
+      AAVE_LENDING = "0x4F01AeD16D97E3aB5ab2B501154DC9bb0F1A5A2C"
+      W_CHAIN_TOKEN = "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7"
+      INSTA_MASTER = "0x3A4A2540Df5aB4Ef5503bbfBFec31ce7474B056f"
+  }
 
-    // const InstaPoolV2Implementation = await ethers.getContractFactory("InstaPoolV2ImplementationV2");
-    // const instaPoolV2Implementation = await InstaPoolV2Implementation.deploy(INSTA_INDEX, W_CHAIN_TOKEN, AAVE_LENDING);
-    const instaPoolV2Implementation = {address: "0xb6A15e7Dd81999792353119014A018378E104121"}
-    // await instaPoolV2Implementation.deployed();
+    const instaPoolV2ImplementationV2 = await deploy("InstaPoolV2ImplementationV2", {
+        from: deployer,
+        args: [INSTA_INDEX, W_CHAIN_TOKEN, AAVE_LENDING]
+    })
+    console.log("InstaPoolV2Implementation deployed: ", instaPoolV2ImplementationV2.address);
 
-    console.log("InstaPoolV2Implementation deployed: ", instaPoolV2Implementation.address);
-
-    // const InstaPoolV2 = await ethers.getContractFactory("InstaPoolV2");
-    // const instaPoolV2 = await InstaPoolV2.deploy(instaPoolV2Implementation.address, INSTA_MASTER_PROXY, "0x");
-    const instaPoolV2 = {address:"0xF77A5935f35aDD4C2f524788805293EF86B87560" }
-    // await instaPoolV2.deployed();
-
+    const instaPoolV2 = await deploy("InstaPoolV2", {
+        from: deployer,
+        args: [instaPoolV2ImplementationV2.address, INSTA_MASTER_PROXY, "0x"]
+    })
     console.log("InstaPoolV2 deployed: ", instaPoolV2.address);
-
+    
     const sigs = ['0x9304c934']
 
-    // const InstaPoolV2Proxy = await ethers.getContractAt("InstaPoolV2ImplementationV2", instaPoolV2.address);
-    // await InstaPoolV2Proxy.initialize(sigs, INSTA_MASTER)
+    const InstaPoolV2Proxy = await ethers.getContractAt("InstaPoolV2ImplementationV2", instaPoolV2.address);
+    await InstaPoolV2Proxy.initialize(sigs, INSTA_MASTER)
 
     if (hre.network.name === "mainnet" || hre.network.name === "kovan" || hre.network.name == "matic") {
         await hre.run("verify:verify", {
-            address: instaPoolV2Implementation.address,
+            address: instaPoolV2ImplementationV2.address,
             constructorArguments: [INSTA_INDEX, W_CHAIN_TOKEN, AAVE_LENDING]
           }
         )
@@ -61,15 +70,20 @@ async function main() {
         await hre.run("verify:verify", {
             address: instaPoolV2.address,
             contract: "contracts/proxy/Instapool.sol:InstaPoolV2",
-            constructorArguments: [instaPoolV2Implementation.address, INSTA_MASTER_PROXY, "0x"]
+            constructorArguments: [instaPoolV2ImplementationV2.address, INSTA_MASTER_PROXY, "0x"]
           }
         )
 
-        // await hre.run("verify:verify", {
-        //   address: connectV2InstaPool.address,
-        //   constructorArguments: [instaPoolV2.address]
-        // })
+    } else if (hre.network.name === "avax") {
+      await hre.run("sourcify", {
+        address: instaPoolV2ImplementationV2.address,
+        }
+      )
 
+      await hre.run("sourcify", {
+          address: instaPoolV2.address,
+        }
+      )
     } else {
       console.log("Contracts deployed to hardhat")
     }
