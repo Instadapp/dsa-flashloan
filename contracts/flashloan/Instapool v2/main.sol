@@ -117,13 +117,11 @@ contract AaveFlashloaner is Helper {
     }
 
     function routeAave(address[] memory _tokens, uint256[] memory _amounts, bytes memory data) internal {
-        uint[] memory _modes = new uint[](1);
 
-        _modes[0] = 0;
-        
         data = abi.encode(msg.sender, data);
 
         uint _length = _tokens.length;
+        uint[] memory _modes = new uint[](_length);
         uint[] memory iniBals = new uint[](_length);
         uint[] memory finBals = new uint[](_length);
         IERC20[] memory _tokenContracts = new IERC20[](_length);
@@ -137,6 +135,7 @@ contract AaveFlashloaner is Helper {
             } else {
                 iniBals[i] = _tokenContracts[i].balanceOf(address(this));
             }
+            _modes[i] = 0;
         }
 
         aaveLending.flashLoan(address(this), _tokens, _amounts, _modes, address(0), data, 3228);
